@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Outer circuit-board style frame -->
+  <rect x="2" y="2" width="20" height="20" rx="2" stroke-width="1.5"/>
+  <!-- Binary digit rows suggesting 01 patterns -->
+  <text x="4" y="10" font-family="monospace" font-size="5" fill="currentColor" stroke="none">01</text>
+  <text x="4" y="16" font-family="monospace" font-size="5" fill="currentColor" stroke="none">10</text>
+  <text x="13" y="10" font-family="monospace" font-size="5" fill="currentColor" stroke="none">11</text>
+  <text x="13" y="16" font-family="monospace" font-size="5" fill="currentColor" stroke="none">00</text>
+  <!-- Accent underline -->
+  <line x1="4" y1="19" x2="20" y2="19" stroke-width="1.5"/>
+</svg>

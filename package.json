@@ -1,0 +1,92 @@
+{
+  "name": "bitworkbench",
+  "displayName": "BitWorkbench",
+  "description": "A numeric systems workbench for low-level developers.",
+  "version": "1.0.0",
+  "publisher": "bitworkbench",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Debuggers"
+  ],
+  "keywords": [
+    "binary",
+    "hex",
+    "bitwise",
+    "assembly",
+    "embedded",
+    "reverse engineering",
+    "low-level",
+    "calculator",
+    "numeric"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "bitworkbench",
+          "title": "BitWorkbench",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "bitworkbench": [
+        {
+          "type": "webview",
+          "id": "bitworkbench.mainView",
+          "name": "Numeric Workbench"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "bitworkbench.openPanel",
+        "title": "BitWorkbench: Open Panel"
+      },
+      {
+        "command": "bitworkbench.analyzeSelection",
+        "title": "BitWorkbench: Analyze Selected Value"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "bitworkbench.analyzeSelection",
+        "key": "ctrl+shift+b",
+        "mac": "cmd+shift+b",
+        "when": "editorTextFocus"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "bitworkbench.analyzeSelection",
+          "when": "editorHasSelection",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.22.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/placeholder/bitworkbench"
+  }
+}
