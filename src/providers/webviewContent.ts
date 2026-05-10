@@ -12,8 +12,12 @@ import * as vscode from 'vscode';
  * The webview uses a self-contained script — no external dependencies.
  */
 export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.Uri): string {
-  // CSP nonce for inline scripts
   const nonce = getNonce();
+
+  // Shoelace served from local node_modules
+  const shoelaceBase = webview.asWebviewUri(
+    vscode.Uri.joinPath(extensionUri, 'node_modules', '@shoelace-style', 'shoelace', 'dist')
+  );
 
   return /* html */ `<!DOCTYPE html>
 <html lang="en">
@@ -22,9 +26,15 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'none';
              style-src ${webview.cspSource} 'unsafe-inline';
-             script-src 'nonce-${nonce}';">
+             script-src 'nonce-${nonce}' ${webview.cspSource};
+             font-src ${webview.cspSource};
+             img-src ${webview.cspSource} data:;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BitWorkbench</title>
+
+  <link rel="stylesheet" href="${shoelaceBase}/themes/dark.css" />
+  <script type="module" src="${shoelaceBase}/shoelace-autoloader.js" nonce="${nonce}"></script>
+
   <style>
     /* ─── Reset & Base ─────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -61,6 +71,26 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       overflow-x: hidden;
       padding-bottom: 24px;
     }
+
+    /* ─── Shoelace copy button ──────────────────────────── */
+    sl-copy-button {
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    sl-copy-button::part(button) {
+      padding: 1px 4px;
+      color: var(--text-dim);
+      background: none;
+      border: none;
+      font-size: 12px;
+    }
+    sl-copy-button::part(button):hover { color: var(--accent2); }
+
+    .result-table tr:hover sl-copy-button,
+    .sign-card:hover sl-copy-button,
+    .calc-result-row:hover sl-copy-button,
+    .all-sizes-table tr:hover sl-copy-button,
+    .binary-visual:hover sl-copy-button { opacity: 1; }
 
     /* ─── Section headers ──────────────────────────────── */
     .section {
@@ -115,13 +145,8 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       transition: border-color 0.15s;
     }
 
-    input[type="text"]:focus {
-      border-color: var(--accent);
-    }
-
-    input[type="text"].error {
-      border-color: var(--text-err);
-    }
+    input[type="text"]:focus { border-color: var(--accent); }
+    input[type="text"].error { border-color: var(--text-err); }
 
     .hint {
       color: var(--text-dim);
@@ -131,8 +156,30 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     }
 
     .hint span { color: var(--accent2); }
+    .hint [data-tooltip] { color: var(--accent2); cursor: help; }
+    .hint .msb { color: var(--accent2); }
 
-    /* ─── Error message ─────────────────────────────────── */
+    .tooltip {
+      position: fixed;
+      z-index: 1000;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 150ms ease, transform 150ms ease;
+      background: rgba(20, 20, 24, 0.94);
+      color: #f5f5f5;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 10px;
+      line-height: 1.4;
+      max-width: 260px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+      white-space: normal;
+    }
+
+    .tooltip.show { opacity: 1; transform: translateY(0); }
+
+    /* ─── Error / overflow messages ─────────────────────── */
     .error-msg {
       color: var(--text-err);
       font-size: 11px;
@@ -141,7 +188,6 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       min-height: 16px;
     }
 
-    /* ─── Overflow message ───────────────────────────────── */
     .overflow-msg {
       color: #ffcc00;
       font-size: 11px;
@@ -150,7 +196,6 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       min-height: 16px;
     }
 
-    /* ─── Signed overflow message ────────────────────────── */
     .signed-overflow-msg {
       color: #4ec9b0;
       font-size: 11px;
@@ -170,7 +215,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
 
     .result-table td {
       padding: 3px 6px 3px 0;
-      vertical-align: top;
+      vertical-align: middle;
     }
 
     .result-table .label {
@@ -183,6 +228,12 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     .result-table .value {
       color: var(--text);
       word-break: break-all;
+      width: 100%;
+    }
+
+    .result-table .copy-cell {
+      width: 24px;
+      text-align: right;
     }
 
     .result-table .value.hex   { color: var(--accent2); }
@@ -232,6 +283,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 6px 8px;
+      position: relative;
     }
 
     .sign-card .card-title {
@@ -250,6 +302,12 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       word-break: break-all;
     }
 
+    .sign-card .card-copy {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+    }
+
     .sign-card.signed .card-value   { color: #f48771; }
     .sign-card.unsigned .card-value { color: var(--accent2); }
 
@@ -266,6 +324,13 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       word-break: break-all;
       line-height: 1.8;
       margin-bottom: 8px;
+      position: relative;
+    }
+
+    .binary-visual .bin-copy {
+      position: absolute;
+      top: 4px;
+      right: 4px;
     }
 
     .binary-visual .bit-1 { color: #dcdcaa; font-weight: 700; }
@@ -328,18 +393,35 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     }
 
     .calc-result .expr {
+      display: flex;
+      align-items: center;
+      gap: 4px;
       color: var(--text-dim);
       margin-bottom: 4px;
       font-size: 10px;
     }
 
+    .calc-result .expr #calc-expr-text { flex: 1; }
+
+    /* ─── Calculator result rows — values flush right ───── */
     .calc-result-row {
       display: flex;
-      justify-content: space-between;
+      align-items: center;
       padding: 2px 0;
+      gap: 4px;
     }
 
-    .calc-result-row .r-label { color: var(--text-dim); }
+    .calc-result-row .r-label {
+      color: var(--text-dim);
+      white-space: nowrap;
+      min-width: 52px;
+    }
+
+    .calc-result-row .r-value {
+      flex: 1;
+      text-align: right;
+    }
+
     .calc-result-row .r-value.hex { color: var(--accent2); }
     .calc-result-row .r-value.dec { color: var(--text); }
     .calc-result-row .r-value.bin { color: var(--accent4); }
@@ -353,20 +435,6 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       border-radius: var(--radius);
       background: rgba(255,255,255,0.03);
       border: 1px solid rgba(255,255,255,0.06);
-    }
-
-    /* ─── Source badge ──────────────────────────────────── */
-    .source-badge {
-      display: inline-block;
-      font-size: 9px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      padding: 1px 5px;
-      border-radius: 2px;
-      background: #264f78;
-      color: var(--accent);
-      margin-left: 4px;
-      vertical-align: middle;
     }
 
     /* ─── Divider ───────────────────────────────────────── */
@@ -383,9 +451,6 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       font-style: italic;
       padding: 8px 0;
     }
-
-    /* ─── Tooltip ───────────────────────────────────────── */
-    [title] { cursor: help; }
 
     /* ─── Scrollbar ─────────────────────────────────────── */
     ::-webkit-scrollbar { width: 6px; }
@@ -413,18 +478,17 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     .all-sizes-table td {
       padding: 2px 6px 2px 0;
       border-top: 1px solid var(--border);
+      vertical-align: middle;
     }
 
-    .all-sizes-table .size-label {
-      color: var(--text-dim);
-      white-space: nowrap;
-    }
-
+    .all-sizes-table .size-label { color: var(--text-dim); white-space: nowrap; }
     .all-sizes-table .u-val { color: var(--accent2); }
     .all-sizes-table .s-val { color: #f48771; }
+    .all-sizes-table .copy-cell { width: 24px; }
   </style>
 </head>
 <body>
+  <div class="tooltip" id="tooltip" aria-hidden="true"></div>
 
 <!-- ═══════════════════════════════════════════════════
      SECTION 1 — CONVERTER
@@ -437,7 +501,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
   <div class="section-content" id="conv-content">
 
     <div class="hint">
-      Prefixes required: <span>0x</span>FF · <span>0b</span>1010 · <span>0o</span>77 · <span>255</span> · negatives: <span>-0x</span>FF
+      Prefixes required: <span data-tooltip="Hexadecimal prefix.">0x</span>FF · <span data-tooltip="Binary prefix.">0b</span>1010 · <span data-tooltip="Octal prefix.">0o</span>77 · <span data-tooltip="Decimal literal.">255</span> · negatives: <span data-tooltip="Negative hexadecimal value prefix.">-0x</span>FF or [<span class="msb" data-tooltip="Most Significant Bit. If 1, number is negative in two's complement.">MSB</span>]
     </div>
 
     <div class="input-row">
@@ -456,16 +520,32 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       <button type="button" class="bit-btn" data-size="64">int64</button>
     </div>
 
-    <!-- Binary visual -->
+    <!-- Binary visual (copy button injected dynamically) -->
     <div class="binary-visual" id="bin-visual" style="display:none"></div>
     <div class="raw-caption" id="raw-caption" style="display:none"></div>
 
     <!-- Main conversions -->
     <table class="result-table" id="conv-table" style="display:none">
-      <tr><td class="label">Input (signed)</td>  <td class="value dec"   id="r-dec"></td></tr>
-      <tr><td class="label">Raw hex</td>          <td class="value hex"   id="r-hex"></td></tr>
-      <tr><td class="label">Raw oct</td>          <td class="value oct"   id="r-oct"></td></tr>
-      <tr><td class="label">ASCII</td>            <td class="value ascii" id="r-ascii"></td></tr>
+      <tr>
+        <td class="label">Input (signed)</td>
+        <td class="value dec" id="r-dec"></td>
+        <td class="copy-cell"><sl-copy-button id="copy-dec" value="" label="Copy"></sl-copy-button></td>
+      </tr>
+      <tr>
+        <td class="label">Raw hex</td>
+        <td class="value hex" id="r-hex"></td>
+        <td class="copy-cell"><sl-copy-button id="copy-hex" value="" label="Copy"></sl-copy-button></td>
+      </tr>
+      <tr>
+        <td class="label">Raw oct</td>
+        <td class="value oct" id="r-oct"></td>
+        <td class="copy-cell"><sl-copy-button id="copy-oct" value="" label="Copy"></sl-copy-button></td>
+      </tr>
+      <tr>
+        <td class="label">ASCII</td>
+        <td class="value ascii" id="r-ascii"></td>
+        <td class="copy-cell"><sl-copy-button id="copy-ascii" value="" label="Copy"></sl-copy-button></td>
+      </tr>
     </table>
 
     <!-- Signed / unsigned cards -->
@@ -473,10 +553,12 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       <div class="sign-card unsigned">
         <div class="card-title">Unsigned interpretation</div>
         <div class="card-value" id="r-unsigned">—</div>
+        <sl-copy-button id="copy-unsigned" class="card-copy" value="" label="Copy"></sl-copy-button>
       </div>
       <div class="sign-card signed">
         <div class="card-title">Signed interpretation</div>
         <div class="card-value" id="r-signed">—</div>
+        <sl-copy-button id="copy-signed" class="card-copy" value="" label="Copy"></sl-copy-button>
       </div>
     </div>
 
@@ -499,7 +581,9 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
         <tr>
           <th>Width</th>
           <th>Unsigned</th>
+          <th></th>
           <th>Signed</th>
+          <th></th>
         </tr>
       </thead>
       <tbody id="sizes-tbody"></tbody>
@@ -518,7 +602,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
   <div class="section-content" id="calc-content">
 
     <div class="hint">
-      Click an op · enter operands · result updates instantly
+      Select an instruction · enter operands · result updates instantly
     </div>
 
     <!-- Op buttons -->
@@ -550,14 +634,41 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
 
     <!-- Result -->
     <div class="calc-result" id="calc-result" style="display:none">
-      <div class="expr" id="calc-expr"></div>
-      <div class="calc-result-row"><span class="r-label">HEX</span><span class="r-value hex" id="cr-hex"></span></div>
-      <div class="calc-result-row"><span class="r-label">DEC</span><span class="r-value dec" id="cr-dec"></span></div>
-      <div class="calc-result-row"><span class="r-label">BIN</span><span class="r-value bin" id="cr-bin"></span></div>
-      <div class="calc-result-row"><span class="r-label">OCT</span><span class="r-value oct" id="cr-oct"></span></div>
+      <div class="expr" id="calc-expr">
+        <span id="calc-expr-text"></span>
+        <sl-copy-button id="copy-expr" value="" label="Copy expression"></sl-copy-button>
+      </div>
+      <div class="calc-result-row">
+        <span class="r-label">HEX</span>
+        <span class="r-value hex" id="cr-hex"></span>
+        <sl-copy-button id="copy-cr-hex" value="" label="Copy"></sl-copy-button>
+      </div>
+      <div class="calc-result-row">
+        <span class="r-label">DEC</span>
+        <span class="r-value dec" id="cr-dec"></span>
+        <sl-copy-button id="copy-cr-dec" value="" label="Copy"></sl-copy-button>
+      </div>
+      <div class="calc-result-row">
+        <span class="r-label">BIN</span>
+        <span class="r-value bin" id="cr-bin"></span>
+        <sl-copy-button id="copy-cr-bin" value="" label="Copy"></sl-copy-button>
+      </div>
+      <div class="calc-result-row">
+        <span class="r-label">OCT</span>
+        <span class="r-value oct" id="cr-oct"></span>
+        <sl-copy-button id="copy-cr-oct" value="" label="Copy"></sl-copy-button>
+      </div>
       <hr>
-      <div class="calc-result-row"><span class="r-label">Unsigned (sel)</span><span class="r-value hex" id="cr-u"></span></div>
-      <div class="calc-result-row"><span class="r-label">Signed (sel)</span>  <span class="r-value" style="color:#f48771" id="cr-s"></span></div>
+      <div class="calc-result-row">
+        <span class="r-label">Unsigned (sel)</span>
+        <span class="r-value hex" id="cr-u"></span>
+        <sl-copy-button id="copy-cr-u" value="" label="Copy"></sl-copy-button>
+      </div>
+      <div class="calc-result-row">
+        <span class="r-label">Signed (sel)</span>
+        <span class="r-value" style="color:#f48771" id="cr-s"></span>
+        <sl-copy-button id="copy-cr-s" value="" label="Copy"></sl-copy-button>
+      </div>
     </div>
 
     <div class="placeholder" id="calc-placeholder">Select an operation and enter operands.</div>
@@ -567,10 +678,17 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
 <script nonce="${nonce}">
   // ─── State ──────────────────────────────────────────────────────────────────
   const vscode = acquireVsCodeApi();
+
+  // Safely update an sl-copy-button's value attribute
+  function setCopy(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.setAttribute('value', String(text));
+  }
+
   let currentBitSize = 16;
   let currentOp = null;
 
-  // ─── Utility: BigInt math (browser-safe, no imports) ────────────────────────
+  // ─── Utility: BigInt math ────────────────────────────────────────────────────
 
   function parseInput(raw) {
     const s = raw.trim();
@@ -578,24 +696,20 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     const negative = s.startsWith('-');
     const unsigned = negative ? s.slice(1) : s;
     try {
+      let value;
       if (/^0[xX][0-9a-fA-F]+$/.test(unsigned)) {
-        const value = BigInt(unsigned);
-        return { valid: true, value: negative ? -value : value };
+        value = BigInt('0x' + unsigned.slice(2));
+      } else if (/^0[bB][01]+$/.test(unsigned)) {
+        value = BigInt('0b' + unsigned.slice(2));
+      } else if (/^0[oO][0-7]+$/.test(unsigned)) {
+        value = BigInt('0o' + unsigned.slice(2));
+      } else if (/^[0-9]+$/.test(unsigned)) {
+        value = BigInt(unsigned);
+      } else {
+        return { valid: false, error: 'Use prefix: 0x hex · 0b binary · 0o octal · digits decimal · prefix negatives with - before the prefix' };
       }
-      if (/^0[bB][01]+$/.test(unsigned)) {
-        const value = BigInt(unsigned);
-        return { valid: true, value: negative ? -value : value };
-      }
-      if (/^0[oO][0-7]+$/.test(unsigned)) {
-        const value = BigInt(unsigned.replace(/^0[oO]/, '0o'));
-        return { valid: true, value: negative ? -value : value };
-      }
-      if (/^[0-9]+$/.test(unsigned)) {
-        const value = BigInt(unsigned);
-        return { valid: true, value: negative ? -value : value };
-      }
-      return { valid: false, error: 'Use prefix: 0x hex · 0b binary · 0o octal · digits decimal · prefix negatives with - before the prefix' };
-    } catch(e) {
+      return { valid: true, value: negative ? -value : value };
+    } catch (e) {
       return { valid: false, error: 'Value out of range or malformed.' };
     }
   }
@@ -619,31 +733,25 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     }
     const bytes = [];
     for (let i = 0; i < nibbles.length; i += 2) {
-      if (i + 1 < nibbles.length) bytes.push(nibbles[i] + ' ' + nibbles[i+1]);
+      if (i + 1 < nibbles.length) bytes.push(nibbles[i] + ' ' + nibbles[i + 1]);
       else bytes.push(nibbles[i]);
     }
     return bytes.join('  ');
   }
 
   function renderBinary(binStr) {
-    let html = '';
-    let nibbleCount = 0;
-    for (let i = 0; i < binStr.length; i++) {
-      const ch = binStr[i];
-      if (ch === ' ') {
-        nibbleCount++;
-        if (nibbleCount % 2 === 0 && nibbleCount > 0) {
-          html += '<span class="bit-sep">│</span>';
-        } else {
-          html += ' ';
-        }
-        continue;
-      }
-      html += ch === '1'
-        ? '<span class="bit-1">1</span>'
-        : '<span class="bit-0">0</span>';
-    }
-    return html;
+    const byteGroups = binStr.split('  ');
+    return byteGroups.map((byteStr, byteIdx) => {
+      const nibbles = byteStr.split(' ');
+      const renderedByte = nibbles.map(nibble =>
+        nibble.split('').map(ch =>
+          ch === '1' ? '<span class="bit-1">1</span>' : '<span class="bit-0">0</span>'
+        ).join('')
+      ).join(' ');
+      return byteIdx < byteGroups.length - 1
+        ? renderedByte + '<span class="bit-sep"> │ </span>'
+        : renderedByte;
+    }).join('');
   }
 
   const ASCII_LABELS = {
@@ -661,11 +769,11 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     return "'" + String.fromCharCode(n) + "'";
   }
 
-  // ─── Converter ─────────────────────────────────────────────────────────────
+  // ─── Converter ──────────────────────────────────────────────────────────────
 
   function updateConverter(raw) {
-    const errEl  = document.getElementById('conv-error');
-    const input  = document.getElementById('conv-input');
+    const errEl = document.getElementById('conv-error');
+    const input = document.getElementById('conv-input');
 
     if (!raw.trim()) {
       clearConvResult();
@@ -685,30 +793,50 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     errEl.textContent = '';
     input.classList.remove('error');
 
-    const v = parsed.value;
+    const v        = parsed.value;
     const unsigned = maskUnsigned(v, currentBitSize);
     const signed   = toSigned(unsigned, currentBitSize);
 
-    const binStr  = unsigned.toString(2).padStart(currentBitSize, '0');
-    const grouped = groupBinary(binStr);
+    const rawBin    = unsigned.toString(2);
+    const nibblePad = Math.max(Math.ceil(rawBin.length / 4) * 4, currentBitSize);
+    const grouped   = groupBinary(rawBin.padStart(nibblePad, '0'));
 
-    document.getElementById('bin-visual').innerHTML = renderBinary(grouped);
-    document.getElementById('bin-visual').style.display = 'block';
+    // Rebuild binary visual with copy button appended
+    const binVisual = document.getElementById('bin-visual');
+    binVisual.innerHTML =
+      renderBinary(grouped) +
+      '<sl-copy-button id="bin-copy" class="bin-copy" value="' + grouped.replace(/"/g, '&quot;') + '" label="Copy binary"></sl-copy-button>';
+    binVisual.style.display = 'block';
 
-    document.getElementById('r-dec').textContent   = v.toString(10);
-    document.getElementById('r-hex').textContent   = '0x' + unsigned.toString(16).toUpperCase().padStart(currentBitSize / 4, '0');
-    document.getElementById('r-oct').textContent   = '0o' + unsigned.toString(8);
-    document.getElementById('r-ascii').textContent = getAscii(unsigned);
+    const rawHex = unsigned.toString(16).toUpperCase();
+    const hexPad = Math.max(Math.ceil(rawHex.length / 2) * 2, currentBitSize / 4);
+    const hexStr = '0x' + rawHex.padStart(hexPad, '0');
+    const octStr = '0o' + unsigned.toString(8);
+    const ascStr = getAscii(unsigned);
+    const decStr = v.toString(10);
+    const uStr   = unsigned.toString(10);
+    const sStr   = signed.toString(10);
 
-    document.getElementById('r-unsigned').textContent = unsigned.toString(10);
-    document.getElementById('r-signed').textContent   = signed.toString(10);
+    document.getElementById('r-dec').textContent     = decStr;
+    document.getElementById('r-hex').textContent     = hexStr;
+    document.getElementById('r-oct').textContent     = octStr;
+    document.getElementById('r-ascii').textContent   = ascStr;
+    document.getElementById('r-unsigned').textContent = uStr;
+    document.getElementById('r-signed').textContent   = sStr;
 
-    // Check for truncation or signed interpretation note
-    const overflowEl = document.getElementById('conv-overflow');
+    setCopy('copy-dec',      decStr);
+    setCopy('copy-hex',      hexStr);
+    setCopy('copy-oct',      octStr);
+    setCopy('copy-ascii',    ascStr);
+    setCopy('copy-unsigned', uStr);
+    setCopy('copy-signed',   sStr);
+
+    // Overflow warnings
+    const overflowEl       = document.getElementById('conv-overflow');
     const signedOverflowEl = document.getElementById('conv-signed-overflow');
     const maxUnsigned = (1n << BigInt(currentBitSize)) - 1n;
-    const maxSigned = (1n << BigInt(currentBitSize - 1)) - 1n;
-    const minSigned = -(1n << BigInt(currentBitSize - 1));
+    const maxSigned   = (1n << BigInt(currentBitSize - 1)) - 1n;
+    const minSigned   = -(1n << BigInt(currentBitSize - 1));
     const isTruncated = v > maxUnsigned || v < minSigned;
 
     if (isTruncated) {
@@ -728,23 +856,23 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       "Two's complement representation for int" + currentBitSize + " (stored raw value)";
     document.getElementById('raw-caption').style.display = 'block';
 
-    document.getElementById('conv-table').style.display  = 'table';
-    document.getElementById('sign-grid').style.display   = 'grid';
+    document.getElementById('conv-table').style.display = 'table';
+    document.getElementById('sign-grid').style.display  = 'grid';
     document.getElementById('conv-placeholder').style.display = 'none';
 
     updateSizesTable(v);
   }
 
   function clearConvResult() {
-    document.getElementById('bin-visual').style.display = 'none';
-    document.getElementById('conv-table').style.display = 'none';
-    document.getElementById('sign-grid').style.display  = 'none';
-    document.getElementById('raw-caption').style.display = 'none';
-    document.getElementById('conv-overflow').style.display = 'none';
+    document.getElementById('bin-visual').style.display          = 'none';
+    document.getElementById('conv-table').style.display          = 'none';
+    document.getElementById('sign-grid').style.display           = 'none';
+    document.getElementById('raw-caption').style.display         = 'none';
+    document.getElementById('conv-overflow').style.display       = 'none';
     document.getElementById('conv-signed-overflow').style.display = 'none';
-    document.getElementById('conv-placeholder').style.display = 'block';
-    document.getElementById('sizes-table').style.display = 'none';
-    document.getElementById('sizes-placeholder').style.display = 'block';
+    document.getElementById('conv-placeholder').style.display    = 'block';
+    document.getElementById('sizes-table').style.display         = 'none';
+    document.getElementById('sizes-placeholder').style.display   = 'block';
   }
 
   function setBitSize(size) {
@@ -754,6 +882,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     });
     const raw = document.getElementById('conv-input').value || '';
     updateConverter(raw);
+    runCalc();
   }
 
   const convInput = document.getElementById('conv-input');
@@ -761,34 +890,84 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     convInput.addEventListener('input', () => updateConverter(convInput.value));
   }
 
-  // ─── All Sizes Table ────────────────────────────────────────────────────────
+  // ─── Tooltip ────────────────────────────────────────────────────────────────
+
+  const tooltip = document.getElementById('tooltip');
+  let tooltipTimer = null;
+
+  function positionTooltip(x, y) {
+    if (!tooltip) return;
+    const margin = 8;
+    tooltip.style.left = '0px';
+    tooltip.style.top  = '0px';
+    const rect = tooltip.getBoundingClientRect();
+    let left = x + 12;
+    let top  = y + 18;
+    if (left + rect.width  > window.innerWidth  - margin) left = window.innerWidth  - rect.width  - margin;
+    if (top  + rect.height > window.innerHeight - margin) top  = y - rect.height - 10;
+    if (top < margin) top = margin;
+    tooltip.style.left = left + 'px';
+    tooltip.style.top  = top  + 'px';
+  }
+
+  function showTooltip(event) {
+    if (!tooltip) return;
+    const text = event.currentTarget.dataset.tooltip;
+    if (!text) return;
+    tooltipTimer = setTimeout(() => {
+      tooltip.textContent = text;
+      tooltip.classList.add('show');
+      positionTooltip(event.clientX, event.clientY);
+    }, 150);
+  }
+
+  function hideTooltip() {
+    if (!tooltip) return;
+    if (tooltipTimer) { clearTimeout(tooltipTimer); tooltipTimer = null; }
+    tooltip.classList.remove('show');
+    tooltip.style.left = '-9999px';
+    tooltip.style.top  = '-9999px';
+  }
+
+  document.querySelectorAll('[data-tooltip]').forEach(el => {
+    el.addEventListener('mouseenter', showTooltip);
+    el.addEventListener('mousemove', event => {
+      if (tooltip && tooltip.classList.contains('show')) positionTooltip(event.clientX, event.clientY);
+    });
+    el.addEventListener('mouseleave', hideTooltip);
+  });
+
+  // ─── All Sizes Table ─────────────────────────────────────────────────────────
 
   function updateSizesTable(v) {
     const sizes = [8, 16, 32, 64];
     const tbody = document.getElementById('sizes-tbody');
     tbody.innerHTML = '';
     for (const sz of sizes) {
-      const u = maskUnsigned(v, sz);
-      const s = toSigned(u, sz);
-      const tr = document.createElement('tr');
+      const u    = maskUnsigned(v, sz);
+      const s    = toSigned(u, sz);
+      const uStr = u.toString(10);
+      const sStr = s.toString(10);
+      const tr   = document.createElement('tr');
       tr.innerHTML =
         '<td class="size-label">int' + sz + '</td>' +
-        '<td class="u-val">' + u.toString(10) + '</td>' +
-        '<td class="s-val">' + s.toString(10) + '</td>';
+        '<td class="u-val">' + uStr + '</td>' +
+        '<td class="copy-cell"><sl-copy-button value="' + uStr + '" label="Copy"></sl-copy-button></td>' +
+        '<td class="s-val">' + sStr + '</td>' +
+        '<td class="copy-cell"><sl-copy-button value="' + sStr + '" label="Copy"></sl-copy-button></td>';
       tbody.appendChild(tr);
     }
-    document.getElementById('sizes-table').style.display = 'table';
+    document.getElementById('sizes-table').style.display       = 'table';
     document.getElementById('sizes-placeholder').style.display = 'none';
   }
 
-  // ─── Calculator ─────────────────────────────────────────────────────────────
+  // ─── Calculator ──────────────────────────────────────────────────────────────
 
   function selectOp(op) {
     currentOp = op;
     document.querySelectorAll('.op-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.op === op);
     });
-    // NOT is unary — hide B input
     const bWrap = document.getElementById('calc-b');
     const lblB  = document.getElementById('lbl-b');
     if (op === 'NOT') {
@@ -802,7 +981,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
   }
 
   function evaluateOp(op, a, b) {
-    switch(op) {
+    switch (op) {
       case 'ADD': return a + b;
       case 'SUB': return a - b;
       case 'MUL': return a * b;
@@ -812,10 +991,39 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       case 'OR':  return a | b;
       case 'XOR': return a ^ b;
       case 'NOT': return ~a;
-      case 'SHL': return a << b;
-      case 'SHR': return a >> b;
+      case 'SHL': {
+        const shift = Number(b);
+        if (!Number.isInteger(shift) || shift < 0) throw new Error('Invalid shift count');
+        return a << BigInt(shift);
+      }
+      case 'SHR': {
+        const shift = Number(b);
+        if (!Number.isInteger(shift) || shift < 0) throw new Error('Invalid shift count');
+        return a >> BigInt(shift);
+      }
       default: throw new Error('Unknown op: ' + op);
     }
+  }
+
+  function inputNibbleWidth(raw) {
+    const s = raw.trim();
+    if (/^0[xX]([0-9a-fA-F]+)$/.test(s)) {
+      const digits = s.replace(/^0[xX]/, '').length;
+      return Math.ceil(digits / 2) * 2 * 4;
+    }
+    if (/^0[bB]([01]+)$/.test(s)) {
+      const bits = s.replace(/^0[bB]/, '').length;
+      return Math.ceil(bits / 4) * 4;
+    }
+    if (/^0[oO]([0-7]+)$/.test(s)) {
+      const val = BigInt(s.replace(/^0[oO]/, '0o'));
+      const bits = val === 0n ? 1 : val.toString(2).length;
+      return Math.ceil(bits / 4) * 4;
+    }
+    const p = parseInput(s);
+    if (!p.valid) return 4;
+    const bits = p.value <= 0n ? 4 : p.value.toString(2).length;
+    return Math.ceil(bits / 4) * 4;
   }
 
   function runCalc() {
@@ -826,7 +1034,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     if (!currentOp) {
       errEl.textContent = '';
       resEl.style.display = 'none';
-      phEl.style.display = 'block';
+      phEl.style.display  = 'block';
       return;
     }
 
@@ -837,7 +1045,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     if (!pA.valid && aRaw.trim()) {
       errEl.textContent = 'A: ' + pA.error;
       resEl.style.display = 'none';
-      phEl.style.display = 'block';
+      phEl.style.display  = 'block';
       return;
     }
 
@@ -846,89 +1054,100 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       if (!pB.valid && bRaw.trim()) {
         errEl.textContent = 'B: ' + pB.error;
         resEl.style.display = 'none';
-        phEl.style.display = 'block';
+        phEl.style.display  = 'block';
         return;
       }
       if (!pA.valid || !pB.valid) {
         errEl.textContent = '';
         resEl.style.display = 'none';
-        phEl.style.display = 'block';
+        phEl.style.display  = 'block';
         return;
       }
-
       try {
-        const result = evaluateOp(currentOp, pA.value, pB.value);
-        showCalcResult(result, currentOp + ' ' + aRaw + ' ' + bRaw);
+        const result      = evaluateOp(currentOp, pA.value, pB.value);
+        const displayBits = Math.max(inputNibbleWidth(aRaw), inputNibbleWidth(bRaw));
+        showCalcResult(result, currentOp + ' ' + aRaw + ' ' + bRaw, displayBits);
         errEl.textContent = '';
       } catch(e) {
         errEl.textContent = e.message;
         resEl.style.display = 'none';
-        phEl.style.display = 'block';
+        phEl.style.display  = 'block';
       }
     } else {
       if (!pA.valid) {
         errEl.textContent = '';
         resEl.style.display = 'none';
-        phEl.style.display = 'block';
+        phEl.style.display  = 'block';
         return;
       }
       try {
         const result = evaluateOp('NOT', pA.value, 0n);
-        showCalcResult(result, 'NOT ' + aRaw);
+        showCalcResult(result, 'NOT ' + aRaw, inputNibbleWidth(aRaw));
         errEl.textContent = '';
       } catch(e) {
         errEl.textContent = e.message;
         resEl.style.display = 'none';
-        phEl.style.display = 'block';
+        phEl.style.display  = 'block';
       }
     }
   }
 
-  function showCalcResult(result, expr) {
+  function showCalcResult(result, expr, displayBits) {
     const unsigned = maskUnsigned(result, currentBitSize);
     const signed   = toSigned(unsigned, currentBitSize);
 
-    const binRaw = unsigned.toString(2).padStart(currentBitSize, '0');
-    const grouped = groupBinary(binRaw);
+    const rawBin    = unsigned.toString(2);
+    const nibblePad = Math.max(Math.ceil(rawBin.length / 4) * 4, displayBits);
+    const grouped   = groupBinary(rawBin.padStart(nibblePad, '0'));
 
-    document.getElementById('calc-expr').textContent  = '▶ ' + expr;
-    document.getElementById('cr-hex').textContent     = '0x' + unsigned.toString(16).toUpperCase().padStart(currentBitSize / 4, '0');
-    document.getElementById('cr-dec').textContent     = result.toString(10);
-    document.getElementById('cr-bin').textContent     = grouped;
-    document.getElementById('cr-oct').textContent     = '0o' + unsigned.toString(8);
-    document.getElementById('cr-u').textContent       = unsigned.toString(10);
-    document.getElementById('cr-s').textContent       = signed.toString(10);
+    const rawHex = unsigned.toString(16).toUpperCase();
+    const hexPad = Math.max(Math.ceil(rawHex.length / 2) * 2, displayBits / 4);
+    const hexStr = '0x' + rawHex.padStart(hexPad, '0');
+    const decStr = unsigned.toString(10);
+    const octStr = '0o' + unsigned.toString(8);
+    const uStr   = unsigned.toString(10);
+    const sStr   = signed.toString(10);
 
-    document.getElementById('calc-result').style.display = 'block';
+    document.getElementById('calc-expr-text').textContent = '▶ ' + expr;
+    document.getElementById('cr-hex').textContent = hexStr;
+    document.getElementById('cr-dec').textContent = decStr;
+    document.getElementById('cr-bin').textContent = grouped;
+    document.getElementById('cr-oct').textContent = octStr;
+    document.getElementById('cr-u').textContent   = uStr;
+    document.getElementById('cr-s').textContent   = sStr;
+
+    setCopy('copy-expr',   expr);
+    setCopy('copy-cr-hex', hexStr);
+    setCopy('copy-cr-dec', decStr);
+    setCopy('copy-cr-bin', grouped);
+    setCopy('copy-cr-oct', octStr);
+    setCopy('copy-cr-u',   uStr);
+    setCopy('copy-cr-s',   sStr);
+
+    document.getElementById('calc-result').style.display      = 'block';
     document.getElementById('calc-placeholder').style.display = 'none';
   }
 
+  // ─── Event listeners ────────────────────────────────────────────────────────
+
   const calcA = document.getElementById('calc-a');
   const calcB = document.getElementById('calc-b');
-  if (calcA) calcA.addEventListener('input', runCalc);
-  if (calcB) calcB.addEventListener('input', runCalc);
+  if (calcA) {
+    calcA.addEventListener('input', runCalc);
+    calcA.addEventListener('keydown', e => { if (e.key === 'Enter') runCalc(); });
+  }
+  if (calcB) {
+    calcB.addEventListener('input', runCalc);
+    calcB.addEventListener('keydown', e => { if (e.key === 'Enter') runCalc(); });
+  }
 
-  // Enter key on either operand triggers calculation
   document.querySelectorAll('.bit-btn').forEach(btn => {
-    btn.type = 'button';
     btn.addEventListener('click', () => setBitSize(Number(btn.dataset.size)));
   });
 
   document.querySelectorAll('.op-btn').forEach(btn => {
-    btn.type = 'button';
     btn.addEventListener('click', () => selectOp(btn.dataset.op));
   });
-
-  if (calcA) {
-    calcA.addEventListener('keydown', e => {
-      if (e.key === 'Enter') runCalc();
-    });
-  }
-  if (calcB) {
-    calcB.addEventListener('keydown', e => {
-      if (e.key === 'Enter') runCalc();
-    });
-  }
 
   // ─── Section toggle ──────────────────────────────────────────────────────────
 
@@ -936,7 +1155,10 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
 
   function toggleSection(name) {
     sectionState[name] = !sectionState[name];
-    const content = document.getElementById(name === 'converter' ? 'conv-content' : name === 'sizes' ? 'sizes-content' : 'calc-content');
+    const content = document.getElementById(
+      name === 'converter' ? 'conv-content' :
+      name === 'sizes'     ? 'sizes-content' : 'calc-content'
+    );
     const header = content.previousElementSibling;
     if (sectionState[name]) {
       content.classList.remove('hidden');
@@ -947,7 +1169,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     }
   }
 
-  // ─── Messages from extension host (e.g. selected text) ──────────────────────
+  // ─── Messages from extension host ───────────────────────────────────────────
 
   window.addEventListener('message', event => {
     const msg = event.data;
@@ -959,7 +1181,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     }
   });
 
-  // Default to ADD on load so the calculator is immediately usable
+  // Default to ADD on load
   selectOp('ADD');
 </script>
 </body>

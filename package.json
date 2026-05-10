@@ -3,7 +3,8 @@
   "displayName": "BitWorkbench",
   "description": "A numeric systems workbench for low-level developers.",
   "version": "1.0.0",
-  "publisher": "bitworkbench",
+  "publisher": "GabrielOliveiraMiranda",
+  "icon": "resources/icon.png",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -82,11 +83,14 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.85.0",
-    "typescript": "^5.3.0",
-    "@vscode/vsce": "^2.22.0"
+    "@vscode/vsce": "^2.22.0",
+    "typescript": "^5.3.0"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/placeholder/bitworkbench"
+  },
+  "dependencies": {
+    "@shoelace-style/shoelace": "^2.20.1"
   }
 }

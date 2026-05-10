@@ -286,7 +286,7 @@ Supports:
 3. Run:
 
 ```text
-ext install bitworkbench.bitworkbench
+ext install GabrielOliveiraMiranda.bitworkbench
 ```
 
 ---
