@@ -312,7 +312,7 @@ npm install -g @vscode/vsce
 
 vsce package
 
-code --install-extension bitworkbench-1.0.0.vsix
+code --install-extension bitworkbench-1.0.9.vsix
 ```
 
 ---
@@ -489,7 +489,7 @@ SHR 0x80 3
 - [ ] Bit-field editor
 - [ ] Expression history
 - [ ] Keyboard-driven calculator mode
-- [ ] Copy buttons
+- [x] Copy buttons
 - [ ] Status bar integration
 - [ ] Colorized bit visualization
 - [ ] Export/share conversion results
