@@ -32,6 +32,15 @@ export class BitWorkbenchViewProvider implements vscode.WebviewViewProvider {
     };
 
     webviewView.webview.html = getWebviewContent(webviewView.webview, this._extensionUri);
+
+    // Listen for messages from the webview
+    webviewView.webview.onDidReceiveMessage(async (msg) => {
+      if (msg.type === 'copy') {
+        await vscode.env.clipboard.writeText(msg.value);
+        // Notify webview that copy succeeded
+        webviewView.webview.postMessage({ type: 'copyDone', id: msg.id });
+      }
+    });
   }
 
   /**

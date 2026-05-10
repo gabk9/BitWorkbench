@@ -14,11 +14,6 @@ import * as vscode from 'vscode';
 export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.Uri): string {
   const nonce = getNonce();
 
-  // Shoelace served from local node_modules
-  const shoelaceBase = webview.asWebviewUri(
-    vscode.Uri.joinPath(extensionUri, 'node_modules', '@shoelace-style', 'shoelace', 'dist')
-  );
-
   return /* html */ `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -26,14 +21,9 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'none';
              style-src ${webview.cspSource} 'unsafe-inline';
-             script-src 'nonce-${nonce}' ${webview.cspSource};
-             font-src ${webview.cspSource};
-             img-src ${webview.cspSource} data:;">
+             script-src 'nonce-${nonce}';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BitWorkbench</title>
-
-  <link rel="stylesheet" href="${shoelaceBase}/themes/dark.css" />
-  <script type="module" src="${shoelaceBase}/shoelace-autoloader.js" nonce="${nonce}"></script>
 
   <style>
     /* ─── Reset & Base ─────────────────────────────────── */
@@ -72,25 +62,54 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       padding-bottom: 24px;
     }
 
-    /* ─── Shoelace copy button ──────────────────────────── */
-    sl-copy-button {
-      opacity: 0;
-      transition: opacity 0.15s;
-    }
-    sl-copy-button::part(button) {
-      padding: 1px 4px;
-      color: var(--text-dim);
+    /* ─── Copy button (self-contained, Shoelace-style) ─── */
+    .copy-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      padding: 0;
       background: none;
-      border: none;
-      font-size: 12px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      color: var(--text-dim);
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s, color 0.15s, border-color 0.15s, background 0.15s;
+      flex-shrink: 0;
+      position: relative;
     }
-    sl-copy-button::part(button):hover { color: var(--accent2); }
+    .copy-btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .copy-btn:hover { color: var(--accent2); border-color: var(--border); background: var(--bg-hover); }
+    .copy-btn.copied { color: #4ec9b0; border-color: #4ec9b0; }
+    .copy-btn .copy-tooltip {
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1a1a1a;
+      color: #eee;
+      font-size: 10px;
+      font-family: var(--font-ui);
+      padding: 3px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.1s;
+      z-index: 999;
+      border: 1px solid #444;
+    }
+    .copy-btn:hover .copy-tooltip { opacity: 1; }
+    .copy-btn.copied .copy-tooltip { opacity: 1; }
 
-    .result-table tr:hover sl-copy-button,
-    .sign-card:hover sl-copy-button,
-    .calc-result-row:hover sl-copy-button,
-    .all-sizes-table tr:hover sl-copy-button,
-    .binary-visual:hover sl-copy-button { opacity: 1; }
+    .result-table tr:hover .copy-btn,
+    .sign-card:hover .copy-btn,
+    .calc-result-row:hover .copy-btn,
+    .all-sizes-table tr:hover .copy-btn,
+    .binary-visual:hover .copy-btn,
+    .calc-result .expr:hover .copy-btn { opacity: 1; }
 
     /* ─── Section headers ──────────────────────────────── */
     .section {
@@ -158,6 +177,24 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     .hint span { color: var(--accent2); }
     .hint [data-tooltip] { color: var(--accent2); cursor: help; }
     .hint .msb { color: var(--accent2); }
+
+    /* ─── ASCII hint box ────────────────────────────────── */
+    .ascii-hint-box {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+      background: rgba(206, 145, 120, 0.07);
+      border: 1px solid rgba(206, 145, 120, 0.2);
+      border-radius: var(--radius);
+      padding: 5px 8px;
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+
+    .ascii-hint-box .ascii-char {
+      color: var(--accent3);
+      font-weight: 700;
+    }
 
     .tooltip {
       position: fixed;
@@ -529,36 +566,39 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       <tr>
         <td class="label">Input (signed)</td>
         <td class="value dec" id="r-dec"></td>
-        <td class="copy-cell"><sl-copy-button id="copy-dec" value="" label="Copy"></sl-copy-button></td>
+        <td class="copy-cell"><button type="button" class="copy-btn" id="copy-dec" onclick="doCopy(this)" data-label="Copy"><span class="copy-tooltip">Copy</span><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></td>
       </tr>
       <tr>
         <td class="label">Raw hex</td>
         <td class="value hex" id="r-hex"></td>
-        <td class="copy-cell"><sl-copy-button id="copy-hex" value="" label="Copy"></sl-copy-button></td>
+        <td class="copy-cell"><button type="button" class="copy-btn" id="copy-hex" onclick="doCopy(this)" data-label="Copy"><span class="copy-tooltip">Copy</span><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></td>
       </tr>
       <tr>
         <td class="label">Raw oct</td>
         <td class="value oct" id="r-oct"></td>
-        <td class="copy-cell"><sl-copy-button id="copy-oct" value="" label="Copy"></sl-copy-button></td>
+        <td class="copy-cell"><button type="button" class="copy-btn" id="copy-oct" onclick="doCopy(this)" data-label="Copy"><span class="copy-tooltip">Copy</span><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></td>
       </tr>
       <tr>
         <td class="label">ASCII</td>
         <td class="value ascii" id="r-ascii"></td>
-        <td class="copy-cell"><sl-copy-button id="copy-ascii" value="" label="Copy"></sl-copy-button></td>
+        <td class="copy-cell"><button type="button" class="copy-btn" id="copy-ascii" onclick="doCopy(this)" data-label="Copy"><span class="copy-tooltip">Copy</span><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></td>
       </tr>
     </table>
+
+    <!-- ASCII hint box — explains the character shown above -->
+    <div class="ascii-hint-box" id="ascii-hint" style="display:none"></div>
 
     <!-- Signed / unsigned cards -->
     <div class="sign-grid" id="sign-grid" style="display:none">
       <div class="sign-card unsigned">
         <div class="card-title">Unsigned interpretation</div>
         <div class="card-value" id="r-unsigned">—</div>
-        <sl-copy-button id="copy-unsigned" class="card-copy" value="" label="Copy"></sl-copy-button>
+        <button type="button" class="copy-btn card-copy" id="copy-unsigned" onclick="doCopy(this)" data-label="Copy"><span class="copy-tooltip">Copy</span><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
       </div>
       <div class="sign-card signed">
         <div class="card-title">Signed interpretation</div>
         <div class="card-value" id="r-signed">—</div>
-        <sl-copy-button id="copy-signed" class="card-copy" value="" label="Copy"></sl-copy-button>
+        <button type="button" class="copy-btn card-copy" id="copy-signed" onclick="doCopy(this)" data-label="Copy"><span class="copy-tooltip">Copy</span><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
       </div>
     </div>
 
@@ -636,38 +676,38 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     <div class="calc-result" id="calc-result" style="display:none">
       <div class="expr" id="calc-expr">
         <span id="calc-expr-text"></span>
-        <sl-copy-button id="copy-expr" value="" label="Copy expression"></sl-copy-button>
+        <button type="button" class="copy-btn" id="copy-expr" onclick="doCopy(this)" data-label="Copy expression"><span class="copy-tooltip">Copy expression</span><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
       </div>
       <div class="calc-result-row">
         <span class="r-label">HEX</span>
         <span class="r-value hex" id="cr-hex"></span>
-        <sl-copy-button id="copy-cr-hex" value="" label="Copy"></sl-copy-button>
+        <button type="button" class="copy-btn" id="copy-cr-hex" onclick="doCopy(this)" data-label="Copy"><span class="copy-tooltip">Copy</span><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
       </div>
       <div class="calc-result-row">
         <span class="r-label">DEC</span>
         <span class="r-value dec" id="cr-dec"></span>
-        <sl-copy-button id="copy-cr-dec" value="" label="Copy"></sl-copy-button>
+        <button type="button" class="copy-btn" id="copy-cr-dec" onclick="doCopy(this)" data-label="Copy"><span class="copy-tooltip">Copy</span><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
       </div>
       <div class="calc-result-row">
         <span class="r-label">BIN</span>
         <span class="r-value bin" id="cr-bin"></span>
-        <sl-copy-button id="copy-cr-bin" value="" label="Copy"></sl-copy-button>
+        <button type="button" class="copy-btn" id="copy-cr-bin" onclick="doCopy(this)" data-label="Copy"><span class="copy-tooltip">Copy</span><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
       </div>
       <div class="calc-result-row">
         <span class="r-label">OCT</span>
         <span class="r-value oct" id="cr-oct"></span>
-        <sl-copy-button id="copy-cr-oct" value="" label="Copy"></sl-copy-button>
+        <button type="button" class="copy-btn" id="copy-cr-oct" onclick="doCopy(this)" data-label="Copy"><span class="copy-tooltip">Copy</span><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
       </div>
       <hr>
       <div class="calc-result-row">
         <span class="r-label">Unsigned (sel)</span>
         <span class="r-value hex" id="cr-u"></span>
-        <sl-copy-button id="copy-cr-u" value="" label="Copy"></sl-copy-button>
+        <button type="button" class="copy-btn" id="copy-cr-u" onclick="doCopy(this)" data-label="Copy"><span class="copy-tooltip">Copy</span><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
       </div>
       <div class="calc-result-row">
         <span class="r-label">Signed (sel)</span>
         <span class="r-value" style="color:#f48771" id="cr-s"></span>
-        <sl-copy-button id="copy-cr-s" value="" label="Copy"></sl-copy-button>
+        <button type="button" class="copy-btn" id="copy-cr-s" onclick="doCopy(this)" data-label="Copy"><span class="copy-tooltip">Copy</span><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
       </div>
     </div>
 
@@ -679,10 +719,56 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
   // ─── State ──────────────────────────────────────────────────────────────────
   const vscode = acquireVsCodeApi();
 
-  // Safely update an sl-copy-button's value attribute
+  // ─── Copy button handler ─────────────────────────────────────────────────────
+
+  const COPY_SVG  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+  const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>';
+
+  function doCopy(btn) {
+    const text = btn.dataset.value || '';
+    if (!text) return;
+
+    function showSuccess() {
+      btn.classList.add('copied');
+      btn.innerHTML = '<span class="copy-tooltip">Copied!</span>' + CHECK_SVG;
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        const label = btn.dataset.label || 'Copy';
+        btn.innerHTML = '<span class="copy-tooltip">' + label + '</span>' + COPY_SVG;
+      }, 1500);
+    }
+
+    // Try all three methods — whichever works first wins
+    // 1. Extension host message (most reliable in VSCode webviews)
+    vscode.postMessage({ type: 'copy', value: text, id: btn.id });
+
+    // 2. Clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(showSuccess).catch(() => fallbackCopy(text, showSuccess));
+    } else {
+      // 3. execCommand fallback
+      fallbackCopy(text, showSuccess);
+    }
+  }
+
+  function fallbackCopy(text, onSuccess) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+      const ok = document.execCommand('copy');
+      if (ok && onSuccess) onSuccess();
+    } catch(e) {}
+    document.body.removeChild(ta);
+  }
+
+  // Set the data-value on a copy button by id
   function setCopy(id, text) {
     const el = document.getElementById(id);
-    if (el) el.setAttribute('value', String(text));
+    if (el) el.dataset.value = String(text);
   }
 
   let currentBitSize = 16;
@@ -762,11 +848,70 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     127:'DEL'
   };
 
+  // Full descriptions for the ASCII hint box
+  const ASCII_DESCRIPTIONS = {
+    0:  'NUL — Null. String terminator in C/C++.',
+    1:  'SOH — Start of Heading.',
+    2:  'STX — Start of Text.',
+    3:  'ETX — End of Text. Ctrl+C in many terminals.',
+    4:  'EOT — End of Transmission. Ctrl+D (EOF on Unix).',
+    5:  'ENQ — Enquiry.',
+    6:  'ACK — Acknowledge.',
+    7:  'BEL — Bell. Triggers an audible alert (\\\\a in C).',
+    8:  'BS — Backspace (\\\\b in C).',
+    9:  'HT — Horizontal Tab (\\\\t in C).',
+    10: 'LF — Line Feed. Unix/Linux newline character (\\\\n in C).',
+    11: 'VT — Vertical Tab (\\\\v in C).',
+    12: 'FF — Form Feed. Advances to next page (\\\\f in C).',
+    13: 'CR — Carriage Return (\\\\r in C). Windows lines end with CR+LF.',
+    14: 'SO — Shift Out.',
+    15: 'SI — Shift In.',
+    16: 'DLE — Data Link Escape.',
+    17: 'DC1 — Device Control 1 (XON — resume transmission).',
+    18: 'DC2 — Device Control 2.',
+    19: 'DC3 — Device Control 3 (XOFF — pause transmission).',
+    20: 'DC4 — Device Control 4.',
+    21: 'NAK — Negative Acknowledge.',
+    22: 'SYN — Synchronous Idle.',
+    23: 'ETB — End of Transmission Block.',
+    24: 'CAN — Cancel.',
+    25: 'EM — End of Medium.',
+    26: 'SUB — Substitute. Ctrl+Z (EOF on Windows).',
+    27: 'ESC — Escape. Starts ANSI escape sequences in terminals.',
+    28: 'FS — File Separator.',
+    29: 'GS — Group Separator.',
+    30: 'RS — Record Separator.',
+    31: 'US — Unit Separator.',
+    32: 'SP — Space. Printable whitespace (0x20).',
+    127:'DEL — Delete. Non-printable control character.'
+  };
+
   function getAscii(v) {
     const n = Number(v);
     if (v < 0n || v > 127n) return 'N/A';
     if (ASCII_LABELS[n]) return '<' + ASCII_LABELS[n] + '>';
     return "'" + String.fromCharCode(n) + "'";
+  }
+
+  function updateAsciiHint(v) {
+    const hintEl = document.getElementById('ascii-hint');
+    const n = Number(v);
+    if (v < 0n || v > 127n) {
+      hintEl.style.display = 'none';
+      return;
+    }
+    let text = '';
+    if (ASCII_DESCRIPTIONS[n]) {
+      text = ASCII_DESCRIPTIONS[n];
+    } else if (n >= 33 && n <= 126) {
+      text = "'" + String.fromCharCode(n) + "' — Printable ASCII character, code " + n + " (0x" + n.toString(16).toUpperCase() + ").";
+    }
+    if (text) {
+      hintEl.textContent = text;
+      hintEl.style.display = 'block';
+    } else {
+      hintEl.style.display = 'none';
+    }
   }
 
   // ─── Converter ──────────────────────────────────────────────────────────────
@@ -805,8 +950,12 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     const binVisual = document.getElementById('bin-visual');
     binVisual.innerHTML =
       renderBinary(grouped) +
-      '<sl-copy-button id="bin-copy" class="bin-copy" value="' + grouped.replace(/"/g, '&quot;') + '" label="Copy binary"></sl-copy-button>';
+      '<button type="button" class="copy-btn bin-copy" id="bin-copy" onclick="doCopy(this)" data-label="Copy binary">' +
+      '<span class="copy-tooltip">Copy binary</span>' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
+      '</button>';
     binVisual.style.display = 'block';
+    setCopy('bin-copy', grouped);
 
     const rawHex = unsigned.toString(16).toUpperCase();
     const hexPad = Math.max(Math.ceil(rawHex.length / 2) * 2, currentBitSize / 4);
@@ -830,6 +979,9 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     setCopy('copy-ascii',    ascStr);
     setCopy('copy-unsigned', uStr);
     setCopy('copy-signed',   sStr);
+
+    // ASCII hint
+    updateAsciiHint(unsigned);
 
     // Overflow warnings
     const overflowEl       = document.getElementById('conv-overflow');
@@ -871,6 +1023,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     document.getElementById('conv-overflow').style.display       = 'none';
     document.getElementById('conv-signed-overflow').style.display = 'none';
     document.getElementById('conv-placeholder').style.display    = 'block';
+    document.getElementById('ascii-hint').style.display          = 'none';
     document.getElementById('sizes-table').style.display         = 'none';
     document.getElementById('sizes-placeholder').style.display   = 'block';
   }
@@ -949,12 +1102,13 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       const uStr = u.toString(10);
       const sStr = s.toString(10);
       const tr   = document.createElement('tr');
+      const CBTN = (val) => '<button type="button" class="copy-btn" onclick="doCopy(this)" data-label="Copy" data-value="' + val + '"><span class="copy-tooltip">Copy</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>';
       tr.innerHTML =
         '<td class="size-label">int' + sz + '</td>' +
         '<td class="u-val">' + uStr + '</td>' +
-        '<td class="copy-cell"><sl-copy-button value="' + uStr + '" label="Copy"></sl-copy-button></td>' +
+        '<td class="copy-cell">' + CBTN(uStr) + '</td>' +
         '<td class="s-val">' + sStr + '</td>' +
-        '<td class="copy-cell"><sl-copy-button value="' + sStr + '" label="Copy"></sl-copy-button></td>';
+        '<td class="copy-cell">' + CBTN(sStr) + '</td>';
       tbody.appendChild(tr);
     }
     document.getElementById('sizes-table').style.display       = 'table';
