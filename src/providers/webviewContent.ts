@@ -407,17 +407,47 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
 
     .calc-operands {
       display: flex;
+      flex-wrap: wrap;
       gap: var(--gap);
+      align-items: center;
       margin-bottom: 8px;
     }
 
-    .calc-operands input { font-size: 12px; }
+    .calc-operands input {
+      // font-size: 13px;
+      flex: 1 1 180px;
+      min-width: 140px;
+
+      height: 28px;
+      line-height: 18px;
+      padding: 3px 8px;
+      box-sizing: border-box;
+    }
+
     .calc-operands label {
       font-size: 10px;
       color: var(--text-dim);
       font-family: var(--font-mono);
       white-space: nowrap;
       align-self: center;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 520px) {
+      .calc-operands {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .calc-operands label {
+        align-self: flex-start;
+      }
+
+      .calc-operands input {
+        flex: none;
+        width: 100%;
+        min-width: 0;
+      }
     }
 
     .calc-result {
@@ -724,19 +754,19 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
   const COPY_SVG  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
   const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>';
 
+  function showSuccess(btn) {
+    btn.classList.add('copied');
+    btn.innerHTML = '<span class="copy-tooltip">Copied!</span>' + CHECK_SVG;
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      const label = btn.dataset.label || 'Copy';
+      btn.innerHTML = '<span class="copy-tooltip">' + label + '</span>' + COPY_SVG;
+    }, 1500);
+  }
+
   function doCopy(btn) {
     const text = btn.dataset.value || '';
     if (!text) return;
-
-    function showSuccess() {
-      btn.classList.add('copied');
-      btn.innerHTML = '<span class="copy-tooltip">Copied!</span>' + CHECK_SVG;
-      setTimeout(() => {
-        btn.classList.remove('copied');
-        const label = btn.dataset.label || 'Copy';
-        btn.innerHTML = '<span class="copy-tooltip">' + label + '</span>' + COPY_SVG;
-      }, 1500);
-    }
 
     // Try all three methods — whichever works first wins
     // 1. Extension host message (most reliable in VSCode webviews)
@@ -744,10 +774,10 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
 
     // 2. Clipboard API
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(showSuccess).catch(() => fallbackCopy(text, showSuccess));
+      navigator.clipboard.writeText(text).then(() => showSuccess(btn)).catch(() => fallbackCopy(text, () => showSuccess(btn)));
     } else {
       // 3. execCommand fallback
-      fallbackCopy(text, showSuccess);
+      fallbackCopy(text, () => showSuccess(btn));
     }
   }
 
@@ -955,7 +985,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
       '</button>';
     binVisual.style.display = 'block';
-    setCopy('bin-copy', grouped);
+    setCopy('bin-copy', '0b' + rawBin.padStart(nibblePad, '0'));
 
     const rawHex = unsigned.toString(16).toUpperCase();
     const hexPad = Math.max(Math.ceil(rawHex.length / 2) * 2, currentBitSize / 4);
@@ -1273,7 +1303,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     setCopy('copy-expr',   expr);
     setCopy('copy-cr-hex', hexStr);
     setCopy('copy-cr-dec', decStr);
-    setCopy('copy-cr-bin', grouped);
+    setCopy('copy-cr-bin', '0b' + rawBin.padStart(nibblePad, '0'));
     setCopy('copy-cr-oct', octStr);
     setCopy('copy-cr-u',   uStr);
     setCopy('copy-cr-s',   sStr);
@@ -1294,6 +1324,11 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     calcB.addEventListener('input', runCalc);
     calcB.addEventListener('keydown', e => { if (e.key === 'Enter') runCalc(); });
   }
+
+  document.body.addEventListener('click', event => {
+    const btn = event.target.closest && event.target.closest('button.copy-btn');
+    if (btn) doCopy(btn);
+  });
 
   document.querySelectorAll('.bit-btn').forEach(btn => {
     btn.addEventListener('click', () => setBitSize(Number(btn.dataset.size)));
@@ -1332,6 +1367,9 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       input.value = msg.value;
       updateConverter(msg.value);
       if (!sectionState.converter) toggleSection('converter');
+    } else if (msg.type === 'copyDone') {
+      const btn = document.getElementById(msg.id);
+      if (btn) showSuccess(btn);
     }
   });
 
