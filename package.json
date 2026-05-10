@@ -3,8 +3,7 @@
   "displayName": "BitWorkbench",
   "description": "A numeric systems workbench for low-level developers.",
   "version": "1.0.0",
-  "publisher": "GabrielOliveiraMiranda",
-  "icon": "resources/icon.png",
+  "publisher": "bitworkbench",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -40,6 +39,7 @@
     "views": {
       "bitworkbench": [
         {
+          "icon": "resources/icon.svg",
           "type": "webview",
           "id": "bitworkbench.mainView",
           "name": "Numeric Workbench"
