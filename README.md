@@ -1,4 +1,4 @@
-# BitWorkbench
+<h1 style="text-align: center;">BitWorkbench</h1>
 
 > **A numeric systems workbench for low-level developers.**
 
@@ -17,13 +17,13 @@ Designed for:
 
 ---
 
-# Screenshot
+<h1 style="text-align: center;">Screenshot</h1>
 
 <img src="resources/workbench.png"></img>
 
 ---
 
-# Features
+<h1 style="text-align: center;">Features</h1>
 
 ## ✦ Numeric Converter
 
@@ -261,7 +261,7 @@ code --install-extension bitworkbench-1.0.9.vsix
 
 ---
 
-# Usage
+<h1 style="text-align: center;">Usage</h1>
 
 ## Converter
 
@@ -356,7 +356,7 @@ BitWorkbench warns when:
 
 ---
 
-# Supported Formats
+<h1 style="text-align: center;">Supported Formats</h1>
 
 | Format | Example | Prefix |
 |---|---|---|
@@ -367,7 +367,7 @@ BitWorkbench warns when:
 
 ---
 
-# Calculator Examples
+<h1 style="text-align: center;">Calculator Examples</h1>
 
 ```text
 ADD 0xFF 1
@@ -426,7 +426,7 @@ SHR 0x80 3
 
 ---
 
-# Roadmap
+<h1 style="text-align: center;">Roadmap</h1>
 
 - [ ] Endianness visualization
 - [ ] IEEE754 float32 / float64 visualization
@@ -440,7 +440,7 @@ SHR 0x80 3
 
 ---
 
-# Contributing
+<h1 style="text-align: center;">Contributing</h1>
 
 Contributions, issues, and feature requests are welcome.
 
@@ -465,7 +465,7 @@ Please ensure:
 
 ---
 
-# Project Structure
+<h1 style="text-align: center;">Project Structure</h1>
 
 ```text
 bitworkbench/
@@ -478,7 +478,9 @@ bitworkbench/
 │       ├── numeric.ts
 │       └── selectionDetector.ts
 ├── resources/
-│   └── icon.svg
+│   ├── icon.svg
+│   ├── icon.png
+│   └── workbench.png
 ├── .vscode/
 │   ├── launch.json
 │   └── tasks.json
@@ -489,7 +491,7 @@ bitworkbench/
 
 ---
 
-# License
+<h1 style="text-align: center;">License</h1>
 
 MIT License — see `LICENSE` for details.
 
