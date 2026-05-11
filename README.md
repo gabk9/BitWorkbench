@@ -1,4 +1,4 @@
-# BitWorkbench
+i# BitWorkbench
 
 > **A numeric systems workbench for low-level developers.**
 
@@ -19,49 +19,7 @@ Designed for:
 
 # Screenshot
 
-```text
-┌─────────────────────────────────┐
-│  ⬡ CONVERTER                    │
-│  Prefixes required:             │
-│  0xFF · 0b1010 · 0o77 · 255     │
-│                                 │
-│  [ 0xFF__________________ ]     │
-│                                 │
-│  [int8] [int16] [int32] [int64] │
-│                                 │
-│  1111 1111                      │
-│                                 │
-│  HEX   0x00FF                   │
-│  DEC   255                      │
-│  OCT   0o377                    │
-│  ASCII N/A                      │
-│                                 │
-│  ┌──────────┬──────────┐        │
-│  │ Unsigned │  Signed  │        │
-│  │   255    │   -1     │        │
-│  └──────────┴──────────┘        │
-│                                 │
-│  ⊞ SIGNED / UNSIGNED (all)      │
-│  Width  Unsigned  Signed        │
-│  int8      255       -1         │
-│  int16     255      255         │
-│  int32     255      255         │
-│  int64     255      255         │
-│                                 │
-│  ⊕ BITWISE CALCULATOR           │
-│  [ADD][SUB][MUL][DIV][MOD]      │
-│  [AND][OR ][XOR][NOT][SHL][SHR] │
-│                                 │
-│  A: [ 0xF0________ ]            │
-│  B: [ 0x0F________ ]            │
-│                                 │
-│  ▶ AND 0xF0 0x0F                │
-│  HEX  0x0000                    │
-│  DEC  0                         │
-│  BIN  0000 0000                 │
-│  OCT  0o0                       │
-└─────────────────────────────────┘
-```
+<img src="resources/workbench.png"></img>
 
 ---
 
@@ -274,20 +232,6 @@ Supports:
 - command palette
 - context menu
 - keyboard shortcuts
-
----
-
-# Installation
-
-## From the Marketplace *(once published)*
-
-1. Open Visual Studio Code
-2. Press `Ctrl+P`
-3. Run:
-
-```text
-ext install GabrielOliveiraMiranda.bitworkbench
-```
 
 ---
 
