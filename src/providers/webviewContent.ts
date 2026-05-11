@@ -229,8 +229,9 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       font-family: var(--font-mono);
     }
 
-    .hint span { color: var(--accent2); }
-    .hint [data-tooltip] { color: var(--accent2); cursor: help; }
+    .hint [data-tooltip] { cursor: help; }
+    .hint .num-prefix { color: var(--accent2); }
+    .hint .num-value { color: var(--text-dim); }
     .hint .msb { color: var(--accent2); }
 
     /* ─── ASCII hint box ────────────────────────────────── */
@@ -623,7 +624,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
   <div class="section-content" id="conv-content">
 
     <div class="hint">
-      Prefixes required: <span data-tooltip="Hexadecimal prefix."><span class="num-prefix">0x</span><span class="num-value">FF</span></span> · <span data-tooltip="Binary prefix."><span class="num-prefix">0b</span><span class="num-value">1010</span></span> · <span data-tooltip="Octal prefix."><span class="num-prefix">0o</span><span class="num-value">77</span></span> · <span data-tooltip="Decimal literal."><span class="num-value">255</span></span> · negatives: <span data-tooltip="Negative hexadecimal value prefix."><span class="num-prefix">-0x</span><span class="num-value">FF</span></span> or [<span class="msb" data-tooltip="Most Significant Bit. If 1, number is negative in two's complement.">MSB</span>]
+      Prefixes required: <span data-tooltip="Hexadecimal prefix."><span class="num-prefix">0x</span>FF</span> · <span data-tooltip="Binary prefix."><span class="num-prefix">0b</span>1010</span> · <span data-tooltip="Octal prefix."><span class="num-prefix">0o</span>77</span> · <span data-tooltip="Decimal literal."><span class="num-prefix">255</span></span> · negatives: <span data-tooltip="Negative hexadecimal value prefix."><span class="num-prefix">-0x</span>FF</span> or [<span class="msb" data-tooltip="Most Significant Bit. If 1, number is negative in two's complement.">MSB</span>]
     </div>
 
     <div class="input-row">
@@ -1377,7 +1378,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     document.getElementById('calc-expr-text').textContent = '▶ ' + expr;
     document.getElementById('cr-hex').innerHTML = formatNumber(hexStr);
     document.getElementById('cr-dec').innerHTML = formatNumber(decStr);
-    document.getElementById('cr-bin').innerHTML = '<span class="num-prefix">0b</span><span class="num-value">' + grouped + '</span>';
+    document.getElementById('cr-bin').innerHTML = '<span class="num-value">' + grouped + '</span>';
     document.getElementById('cr-oct').innerHTML = formatNumber(octStr);
     document.getElementById('cr-u').innerHTML   = formatNumber(uStr);
     document.getElementById('cr-s').innerHTML   = formatNumber(sStr);
