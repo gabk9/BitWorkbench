@@ -19,9 +19,8 @@ Designed for:
 
 ---
 
-# Screenshot
-
 <div align="center">
+    <h1>Screenshot</h1>
     <img src="resources/workbench.png"></img>
 </div>
 
