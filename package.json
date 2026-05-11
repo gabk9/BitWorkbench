@@ -4,6 +4,7 @@
   "description": "A numeric systems workbench for low-level developers.",
   "version": "1.0.9",
   "publisher": "bitworkbench",
+  "icon": "resources/icon.png",
   "engines": {
     "vscode": "^1.85.0"
   },
