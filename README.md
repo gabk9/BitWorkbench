@@ -1,4 +1,4 @@
-i# BitWorkbench
+# BitWorkbench
 
 > **A numeric systems workbench for low-level developers.**
 
