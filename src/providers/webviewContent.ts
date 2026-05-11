@@ -52,6 +52,61 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       --gap: 8px;
     }
 
+    /* ─── Number formatting ─────────────────────────────────── */
+    .num-prefix {
+      color: var(--num-prefix-color, var(--text-dim));
+      opacity: 1;
+    }
+    .num-value {
+      color: inherit;
+    }
+
+    .result-table .value.hex .num-prefix,
+    .calc-result-row .r-value.hex .num-prefix,
+    .sign-card.unsigned .card-value .num-prefix {
+      --num-prefix-color: var(--text-dim);
+    }
+
+    .result-table .value.bin .num-prefix,
+    .calc-result-row .r-value.bin .num-prefix {
+      --num-prefix-color: var(--text-dim);
+    }
+
+    .result-table .value.oct .num-prefix,
+    .calc-result-row .r-value.oct .num-prefix {
+      --num-prefix-color: var(--text-dim);
+    }
+
+    .result-table .value.dec .num-prefix,
+    .calc-result-row .r-value.dec .num-prefix,
+    .sign-card.signed .card-value .num-prefix {
+      --num-prefix-color: var(--text-dim);
+    }
+
+    @supports (color: color-mix(in srgb, red 50%, blue 50%)) {
+      .result-table .value.hex .num-prefix,
+      .calc-result-row .r-value.hex .num-prefix,
+      .sign-card.unsigned .card-value .num-prefix {
+        --num-prefix-color: color-mix(in srgb, var(--accent2) 72%, var(--text) 28%);
+      }
+
+      .result-table .value.bin .num-prefix,
+      .calc-result-row .r-value.bin .num-prefix {
+        --num-prefix-color: color-mix(in srgb, var(--accent4) 72%, var(--text) 28%);
+      }
+
+      .result-table .value.oct .num-prefix,
+      .calc-result-row .r-value.oct .num-prefix {
+        --num-prefix-color: color-mix(in srgb, #9cdcfe 72%, var(--text) 28%);
+      }
+
+      .result-table .value.dec .num-prefix,
+      .calc-result-row .r-value.dec .num-prefix,
+      .sign-card.signed .card-value .num-prefix {
+        --num-prefix-color: color-mix(in srgb, var(--text) 72%, var(--bg) 15%);
+      }
+    }
+
     body {
       background: var(--bg);
       color: var(--text);
@@ -568,7 +623,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
   <div class="section-content" id="conv-content">
 
     <div class="hint">
-      Prefixes required: <span data-tooltip="Hexadecimal prefix.">0x</span>FF · <span data-tooltip="Binary prefix.">0b</span>1010 · <span data-tooltip="Octal prefix.">0o</span>77 · <span data-tooltip="Decimal literal.">255</span> · negatives: <span data-tooltip="Negative hexadecimal value prefix.">-0x</span>FF or [<span class="msb" data-tooltip="Most Significant Bit. If 1, number is negative in two's complement.">MSB</span>]
+      Prefixes required: <span data-tooltip="Hexadecimal prefix."><span class="num-prefix">0x</span><span class="num-value">FF</span></span> · <span data-tooltip="Binary prefix."><span class="num-prefix">0b</span><span class="num-value">1010</span></span> · <span data-tooltip="Octal prefix."><span class="num-prefix">0o</span><span class="num-value">77</span></span> · <span data-tooltip="Decimal literal."><span class="num-value">255</span></span> · negatives: <span data-tooltip="Negative hexadecimal value prefix."><span class="num-prefix">-0x</span><span class="num-value">FF</span></span> or [<span class="msb" data-tooltip="Most Significant Bit. If 1, number is negative in two's complement.">MSB</span>]
     </div>
 
     <div class="input-row">
@@ -934,13 +989,40 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     if (ASCII_DESCRIPTIONS[n]) {
       text = ASCII_DESCRIPTIONS[n];
     } else if (n >= 33 && n <= 126) {
-      text = "'" + String.fromCharCode(n) + "' — Printable ASCII character, code " + n + " (0x" + n.toString(16).toUpperCase() + ").";
+      text = "'" + String.fromCharCode(n) + "' — Printable ASCII character, code " + n + " (" + formatNumber("0x" + n.toString(16).toUpperCase()) + ").";
     }
     if (text) {
-      hintEl.textContent = text;
+      hintEl.innerHTML = text;
       hintEl.style.display = 'block';
     } else {
       hintEl.style.display = 'none';
+    }
+  }
+
+  // ─── Number formatting ──────────────────────────────────────────────────────
+
+  function formatNumber(str) {
+    if (!str) return str;
+    let prefix = '';
+    let value = str;
+    if (str.startsWith('-')) {
+      prefix = '-';
+      value = str.slice(1);
+    }
+    if (value.startsWith('0x')) {
+      prefix += '0x';
+      value = value.slice(2);
+    } else if (value.startsWith('0b')) {
+      prefix += '0b';
+      value = value.slice(2);
+    } else if (value.startsWith('0o')) {
+      prefix += '0o';
+      value = value.slice(2);
+    }
+    if (prefix) {
+      return '<span class="num-prefix">' + prefix + '</span><span class="num-value">' + value + '</span>';
+    } else {
+      return str;
     }
   }
 
@@ -996,12 +1078,12 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     const uStr   = unsigned.toString(10);
     const sStr   = signed.toString(10);
 
-    document.getElementById('r-dec').textContent     = decStr;
-    document.getElementById('r-hex').textContent     = hexStr;
-    document.getElementById('r-oct').textContent     = octStr;
+    document.getElementById('r-dec').innerHTML     = formatNumber(decStr);
+    document.getElementById('r-hex').innerHTML     = formatNumber(hexStr);
+    document.getElementById('r-oct').innerHTML     = formatNumber(octStr);
     document.getElementById('r-ascii').textContent   = ascStr;
-    document.getElementById('r-unsigned').textContent = uStr;
-    document.getElementById('r-signed').textContent   = sStr;
+    document.getElementById('r-unsigned').innerHTML = formatNumber(uStr);
+    document.getElementById('r-signed').innerHTML   = formatNumber(sStr);
 
     setCopy('copy-dec',      decStr);
     setCopy('copy-hex',      hexStr);
@@ -1026,7 +1108,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       overflowEl.style.display = 'block';
       signedOverflowEl.style.display = 'none';
     } else if (v >= 0n && unsigned > maxSigned) {
-      signedOverflowEl.textContent = 'Value exceeds signed int' + currentBitSize + ' range (' + minSigned.toString() + ' to ' + maxSigned.toString() + '). Signed interpretation differs from unsigned.';
+      signedOverflowEl.innerHTML = 'Value exceeds signed int' + currentBitSize + ' range (' + formatNumber(minSigned.toString()) + ' to ' + formatNumber(maxSigned.toString()) + '). Signed interpretation differs from unsigned.';
       signedOverflowEl.style.display = 'block';
       overflowEl.style.display = 'none';
     } else {
@@ -1135,9 +1217,9 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       const CBTN = (val) => '<button type="button" class="copy-btn" onclick="doCopy(this)" data-label="Copy" data-value="' + val + '"><span class="copy-tooltip">Copy</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>';
       tr.innerHTML =
         '<td class="size-label">int' + sz + '</td>' +
-        '<td class="u-val">' + uStr + '</td>' +
+        '<td class="u-val">' + formatNumber(uStr) + '</td>' +
         '<td class="copy-cell">' + CBTN(uStr) + '</td>' +
-        '<td class="s-val">' + sStr + '</td>' +
+        '<td class="s-val">' + formatNumber(sStr) + '</td>' +
         '<td class="copy-cell">' + CBTN(sStr) + '</td>';
       tbody.appendChild(tr);
     }
@@ -1293,12 +1375,12 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     const sStr   = signed.toString(10);
 
     document.getElementById('calc-expr-text').textContent = '▶ ' + expr;
-    document.getElementById('cr-hex').textContent = hexStr;
-    document.getElementById('cr-dec').textContent = decStr;
-    document.getElementById('cr-bin').textContent = grouped;
-    document.getElementById('cr-oct').textContent = octStr;
-    document.getElementById('cr-u').textContent   = uStr;
-    document.getElementById('cr-s').textContent   = sStr;
+    document.getElementById('cr-hex').innerHTML = formatNumber(hexStr);
+    document.getElementById('cr-dec').innerHTML = formatNumber(decStr);
+    document.getElementById('cr-bin').innerHTML = '<span class="num-prefix">0b</span><span class="num-value">' + grouped + '</span>';
+    document.getElementById('cr-oct').innerHTML = formatNumber(octStr);
+    document.getElementById('cr-u').innerHTML   = formatNumber(uStr);
+    document.getElementById('cr-s').innerHTML   = formatNumber(sStr);
 
     setCopy('copy-expr',   expr);
     setCopy('copy-cr-hex', hexStr);
