@@ -19,7 +19,9 @@ Designed for:
 
 <h1 style="text-align: center;">Screenshot</h1>
 
-<img src="resources/workbench.png"></img>
+<div align="center">
+    <img src="resources/workbench.png"></img>
+</div>
 
 ---
 
