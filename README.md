@@ -1,4 +1,6 @@
-<h1 style="text-align: center;">BitWorkbench</h1>
+<div align="center">
+    <h1>BitWorkbench</h1>
+</div>
 
 > **A numeric systems workbench for low-level developers.**
 
@@ -17,7 +19,7 @@ Designed for:
 
 ---
 
-<h1 style="text-align: center;">Screenshot</h1>
+# Screenshot
 
 <div align="center">
     <img src="resources/workbench.png"></img>
@@ -25,7 +27,7 @@ Designed for:
 
 ---
 
-<h1 style="text-align: center;">Features</h1>
+# Features
 
 ## ✦ Numeric Converter
 
@@ -263,7 +265,7 @@ code --install-extension bitworkbench-1.0.9.vsix
 
 ---
 
-<h1 style="text-align: center;">Usage</h1>
+# Usage
 
 ## Converter
 
@@ -358,7 +360,7 @@ BitWorkbench warns when:
 
 ---
 
-<h1 style="text-align: center;">Supported Formats</h1>
+# Supported Formats
 
 | Format | Example | Prefix |
 |---|---|---|
@@ -369,7 +371,7 @@ BitWorkbench warns when:
 
 ---
 
-<h1 style="text-align: center;">Calculator Examples</h1>
+# Calculator Examples
 
 ```text
 ADD 0xFF 1
@@ -428,7 +430,7 @@ SHR 0x80 3
 
 ---
 
-<h1 style="text-align: center;">Roadmap</h1>
+# Roadmap
 
 - [ ] Endianness visualization
 - [ ] IEEE754 float32 / float64 visualization
@@ -442,7 +444,7 @@ SHR 0x80 3
 
 ---
 
-<h1 style="text-align: center;">Contributing</h1>
+# Contributing
 
 Contributions, issues, and feature requests are welcome.
 
@@ -467,7 +469,7 @@ Please ensure:
 
 ---
 
-<h1 style="text-align: center;">Project Structure</h1>
+# Project Structure
 
 ```text
 bitworkbench/
@@ -493,7 +495,7 @@ bitworkbench/
 
 ---
 
-<h1 style="text-align: center;">License</h1>
+# License
 
 MIT License — see `LICENSE` for details.
 
