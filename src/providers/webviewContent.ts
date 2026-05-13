@@ -982,22 +982,17 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
   function updateAsciiHint(v) {
     const hintEl = document.getElementById('ascii-hint');
     const n = Number(v);
-    if (v < 0n || v > 127n) {
-      hintEl.style.display = 'none';
-      return;
-    }
+
     let text = '';
     if (ASCII_DESCRIPTIONS[n]) {
       text = ASCII_DESCRIPTIONS[n];
     } else if (n >= 33 && n <= 126) {
       text = "'" + String.fromCharCode(n) + "' — Printable ASCII character, code " + n + " (" + formatNumber("0x" + n.toString(16).toUpperCase()) + ").";
-    }
-    if (text) {
-      hintEl.innerHTML = text;
-      hintEl.style.display = 'block';
     } else {
-      hintEl.style.display = 'none';
+      text = "N/A - Not Applicable - value out of range (0 to 127)."
     }
+    hintEl.innerHTML = text;
+    hintEl.style.display = 'block';
   }
 
   // ─── Number formatting ──────────────────────────────────────────────────────
