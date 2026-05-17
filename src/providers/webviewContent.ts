@@ -206,6 +206,148 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       margin-bottom: 8px;
     }
 
+    /*
+     * ══════════════════════════════════════════════════════════
+     * INPUT HISTORY WRAPPER
+     * ══════════════════════════════════════════════════════════
+     *
+     * Every managed text input is wrapped in .hist-wrapper.
+     * The wrapper is position:relative so the history nav
+     * buttons (.hist-nav) can be absolutely positioned inside
+     * the right edge of the input — mimicking the spinner
+     * arrows of input[type="number"].
+     *
+     * Layout:
+     *   ┌─────────────────────────────────┬──┐
+     *   │  input[type="text"]             │▲ │
+     *   │                                 │▼ │
+     *   └─────────────────────────────────┴──┘
+     *
+     * The input gets right-padding equal to the nav button
+     * width so text never slides under the buttons.
+     */
+    .hist-wrapper {
+      position: relative;
+      flex: 1;
+      display: flex;
+      align-items: stretch;
+    }
+
+    /* The text input inside a history wrapper */
+    .hist-wrapper input[type="text"] {
+      flex: 1;
+      /* Reserve space on the right for the nav buttons.
+         Adjust if you change the .hist-nav width. */
+      padding-right: 20px;
+      width: 100%;
+    }
+
+    /*
+     * History navigation button strip.
+     * Two stacked micro-buttons styled like input[type="number"] spinners.
+     * Visibility is controlled by .has-history on the wrapper.
+     */
+    .hist-nav {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 18px;
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid var(--border);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease;
+    }
+
+    /* Show nav strip only when history entries exist */
+    .hist-wrapper.has-history .hist-nav {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Dim when the input doesn't have focus */
+    .hist-wrapper:not(:focus-within) .hist-nav {
+      opacity: 0.45;
+    }
+    .hist-wrapper.has-history:focus-within .hist-nav {
+      opacity: 1;
+    }
+
+    /* Individual up / down arrow button */
+    .hist-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-input);
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      transition: background 0.12s, color 0.12s;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Separator line between up and down buttons */
+    .hist-btn + .hist-btn {
+      border-top: 1px solid var(--border);
+    }
+
+    .hist-btn:hover {
+      background: var(--bg-hover);
+      color: var(--accent2);
+    }
+
+    /* Active/pressed: brief accent flash + subtle scale */
+    .hist-btn:active {
+      background: var(--accent);
+      color: #fff;
+      transform: scale(0.92);
+      transition: transform 0.06s, background 0.06s, color 0.06s;
+    }
+
+    /* Disabled: boundary reached in that direction */
+    .hist-btn:disabled {
+      opacity: 0.28;
+      cursor: default;
+    }
+    .hist-btn:disabled:hover {
+      background: var(--bg-input);
+      color: var(--text-dim);
+    }
+
+    /* SVG triangle arrow inside each button */
+    .hist-btn svg {
+      width: 7px;
+      height: 7px;
+      fill: currentColor;
+      stroke: none;
+      pointer-events: none;
+      display: block;
+    }
+
+    /*
+     * Brief border-glow animation when a history entry loads.
+     * Triggered by adding .hist-flash to the input element.
+     */
+    @keyframes hist-flash {
+      0%   { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+      60%  { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+      100% { border-color: var(--border); box-shadow: none; }
+    }
+
+    .hist-flash {
+      animation: hist-flash 0.35s ease forwards;
+    }
+
+    /* ─── End of history system styles ───────────────────── */
+
     input[type="text"] {
       flex: 1;
       background: var(--bg-input);
@@ -469,11 +611,13 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       margin-bottom: 8px;
     }
 
-    .calc-operands input {
-      // font-size: 13px;
+    /* The hist-wrapper inside calc-operands takes the flex sizing role */
+    .calc-operands .hist-wrapper {
       flex: 1 1 180px;
       min-width: 140px;
+    }
 
+    .calc-operands input {
       height: 28px;
       line-height: 18px;
       padding: 3px 8px;
@@ -499,7 +643,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
         align-self: flex-start;
       }
 
-      .calc-operands input {
+      .calc-operands .hist-wrapper {
         flex: none;
         width: 100%;
         min-width: 0;
@@ -618,18 +762,40 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
 ═══════════════════════════════════════════════════ -->
 <div class="section" id="sec-converter">
   <div class="section-header" onclick="toggleSection('converter')">
-    <span>⬡</span> Converter
-    <span class="chevron">▾</span>
+    <span>&#x2B21;</span> Converter
+    <span class="chevron">&#x25BE;</span>
   </div>
   <div class="section-content" id="conv-content">
 
     <div class="hint">
-      Prefixes required: <span data-tooltip="Hexadecimal prefix."><span class="num-prefix">0x</span>FF</span> · <span data-tooltip="Binary prefix."><span class="num-prefix">0b</span>1010</span> · <span data-tooltip="Octal prefix."><span class="num-prefix">0o</span>77</span> · <span data-tooltip="Decimal literal."><span class="num-prefix">255</span></span> · negatives: <span data-tooltip="Negative hexadecimal value prefix."><span class="num-prefix">-0x</span>FF</span> or [<span class="msb" data-tooltip="Most Significant Bit. If 1, number is negative in two's complement.">MSB</span>]
+      Prefixes required: <span data-tooltip="Hexadecimal prefix."><span class="num-prefix">0x</span>FF</span> &middot; <span data-tooltip="Binary prefix."><span class="num-prefix">0b</span>1010</span> &middot; <span data-tooltip="Octal prefix."><span class="num-prefix">0o</span>77</span> &middot; <span data-tooltip="Decimal literal."><span class="num-prefix">255</span></span> &middot; negatives: <span data-tooltip="Negative hexadecimal value prefix."><span class="num-prefix">-0x</span>FF</span> or [<span class="msb" data-tooltip="Most Significant Bit. If 1, number is negative in two's complement.">MSB</span>]
     </div>
 
     <div class="input-row">
-      <input type="text" id="conv-input" placeholder="0xFF, -0xFF, 0b1010, -0b1010, 255, -255 …" maxlength="256"
-             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <!--
+        .hist-wrapper  : container that activates the history nav buttons.
+        The .has-history class is added automatically by the history system
+        once at least one entry exists — this reveals the nav buttons.
+      -->
+      <div class="hist-wrapper" id="hw-conv">
+        <input type="text" id="conv-input"
+               placeholder="0xFF, -0xFF, 0b1010, -0b1010, 255, -255 &hellip;"
+               maxlength="256"
+               autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <!-- Spinner-style history navigation buttons -->
+        <div class="hist-nav" role="group" aria-label="Input history navigation">
+          <button type="button" class="hist-btn hist-up" id="hw-conv-up"
+                  aria-label="Previous history entry (Up Arrow)"
+                  title="Previous entry (&uarr;)">
+            <svg viewBox="0 0 8 5" aria-hidden="true"><path d="M4 0 L8 5 L0 5 Z"/></svg>
+          </button>
+          <button type="button" class="hist-btn hist-down" id="hw-conv-down"
+                  aria-label="Next history entry (Down Arrow)"
+                  title="Next entry (&darr;)">
+            <svg viewBox="0 0 8 5" aria-hidden="true"><path d="M4 5 L8 0 L0 0 Z"/></svg>
+          </button>
+        </div>
+      </div>
     </div>
     <div class="error-msg" id="conv-error"></div>
     <div class="overflow-msg" id="conv-overflow" style="display:none"></div>
@@ -671,19 +837,19 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       </tr>
     </table>
 
-    <!-- ASCII hint box — explains the character shown above -->
+    <!-- ASCII hint box -->
     <div class="ascii-hint-box" id="ascii-hint" style="display:none"></div>
 
     <!-- Signed / unsigned cards -->
     <div class="sign-grid" id="sign-grid" style="display:none">
       <div class="sign-card unsigned">
         <div class="card-title">Unsigned interpretation</div>
-        <div class="card-value" id="r-unsigned">—</div>
+        <div class="card-value" id="r-unsigned">&mdash;</div>
         <button type="button" class="copy-btn card-copy" id="copy-unsigned" onclick="doCopy(this)" data-label="Copy"><span class="copy-tooltip">Copy</span><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
       </div>
       <div class="sign-card signed">
         <div class="card-title">Signed interpretation</div>
-        <div class="card-value" id="r-signed">—</div>
+        <div class="card-value" id="r-signed">&mdash;</div>
         <button type="button" class="copy-btn card-copy" id="copy-signed" onclick="doCopy(this)" data-label="Copy"><span class="copy-tooltip">Copy</span><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
       </div>
     </div>
@@ -697,8 +863,8 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
 ═══════════════════════════════════════════════════ -->
 <div class="section" id="sec-sizes">
   <div class="section-header" onclick="toggleSection('sizes')">
-    <span>⊞</span> Signed / Unsigned (all sizes)
-    <span class="chevron">▾</span>
+    <span>&#x229E;</span> Signed / Unsigned (all sizes)
+    <span class="chevron">&#x25BE;</span>
   </div>
   <div class="section-content" id="sizes-content">
     <div class="placeholder" id="sizes-placeholder">Enter a value in the Converter above.</div>
@@ -722,13 +888,13 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
 ═══════════════════════════════════════════════════ -->
 <div class="section" id="sec-calc">
   <div class="section-header" onclick="toggleSection('calc')">
-    <span>⊕</span> Bitwise Calculator
-    <span class="chevron">▾</span>
+    <span>&#x2295;</span> Bitwise Calculator
+    <span class="chevron">&#x25BE;</span>
   </div>
   <div class="section-content" id="calc-content">
 
     <div class="hint">
-      Select an instruction · enter operands · result updates instantly
+      Select an instruction &middot; enter operands &middot; result updates instantly
     </div>
 
     <!-- Op buttons -->
@@ -746,14 +912,38 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       <button type="button" class="op-btn" data-op="SHR">SHR</button>
     </div>
 
-    <!-- Operand inputs -->
+    <!-- Operand inputs — each wrapped for independent history -->
     <div class="calc-operands">
       <label id="lbl-a">A:</label>
-      <input type="text" id="calc-a" placeholder="0xFF" maxlength="256"
-             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <div class="hist-wrapper" id="hw-calc-a">
+        <input type="text" id="calc-a" placeholder="0xFF" maxlength="256"
+               autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <div class="hist-nav" role="group" aria-label="Input history navigation">
+          <button type="button" class="hist-btn hist-up" id="hw-calc-a-up"
+                  aria-label="Previous history entry (Up Arrow)" title="Previous entry (&uarr;)">
+            <svg viewBox="0 0 8 5" aria-hidden="true"><path d="M4 0 L8 5 L0 5 Z"/></svg>
+          </button>
+          <button type="button" class="hist-btn hist-down" id="hw-calc-a-down"
+                  aria-label="Next history entry (Down Arrow)" title="Next entry (&darr;)">
+            <svg viewBox="0 0 8 5" aria-hidden="true"><path d="M4 5 L8 0 L0 0 Z"/></svg>
+          </button>
+        </div>
+      </div>
       <label id="lbl-b">B:</label>
-      <input type="text" id="calc-b" placeholder="0x0F" maxlength="256"
-             autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <div class="hist-wrapper" id="hw-calc-b">
+        <input type="text" id="calc-b" placeholder="0x0F" maxlength="256"
+               autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <div class="hist-nav" role="group" aria-label="Input history navigation">
+          <button type="button" class="hist-btn hist-up" id="hw-calc-b-up"
+                  aria-label="Previous history entry (Up Arrow)" title="Previous entry (&uarr;)">
+            <svg viewBox="0 0 8 5" aria-hidden="true"><path d="M4 0 L8 5 L0 5 Z"/></svg>
+          </button>
+          <button type="button" class="hist-btn hist-down" id="hw-calc-b-down"
+                  aria-label="Next history entry (Down Arrow)" title="Next entry (&darr;)">
+            <svg viewBox="0 0 8 5" aria-hidden="true"><path d="M4 5 L8 0 L0 0 Z"/></svg>
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="error-msg" id="calc-error"></div>
@@ -805,6 +995,531 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
   // ─── State ──────────────────────────────────────────────────────────────────
   const vscode = acquireVsCodeApi();
 
+  // ══════════════════════════════════════════════════════════════════════════════
+  //  INPUT HISTORY SYSTEM
+  // ══════════════════════════════════════════════════════════════════════════════
+  //
+  //  Architecture
+  //  ─────────────
+  //  Each text input is paired with a .hist-wrapper <div> that holds:
+  //   • the <input> itself
+  //   • a .hist-nav strip with two micro-buttons (▲ up / ▼ down)
+  //
+  //  Per-input state lives in historyStores (a Map keyed by wrapper id):
+  //   { entries: string[], cursor: number|null, draft: string }
+  //
+  //   entries  — chronological array; index 0 = oldest, last = most recent
+  //   cursor   — null  = live-draft mode (user is typing freely)
+  //              N     = currently previewing history[N]
+  //   draft    — snapshot of the input value taken when the user first
+  //              pressed ArrowUp; restored when ArrowDown passes the newest entry
+  //
+  //  ┌──────────────────────────────────────────────────────────────────────┐
+  //  │  QUICK CONFIGURATION GUIDE                                            │
+  //  │                                                                        │
+  //  │  History limit          →  HISTORY_MAX_SIZE constant (below)           │
+  //  │  Navigation at edges    →  HISTORY_LOOP_NAVIGATION constant (below)    │
+  //  │  Persistent storage     →  see "Session persistence" note below        │
+  //  └──────────────────────────────────────────────────────────────────────┘
+
+  // ─── Configuration constants ─────────────────────────────────────────────────
+
+  /**
+   * HISTORY_MAX_SIZE
+   * Maximum number of entries kept per input.
+   * When the store reaches this limit the OLDEST entry is evicted.
+   *
+   * ↓ Change this number to raise or lower the limit globally. ↓
+   */
+  const HISTORY_MAX_SIZE = 500;
+
+  /**
+   * HISTORY_LOOP_NAVIGATION
+   * false (default) → navigation stops cleanly at boundaries:
+   *     ArrowUp  at the oldest entry  → no-op (button disabled)
+   *     ArrowDown at the live draft   → no-op (button disabled)
+   * true           → navigation loops:
+   *     ArrowUp  at the oldest entry  → jumps to the most recent entry
+   *     ArrowDown at the live draft   → jumps to the oldest entry
+   *
+   * ↓ Set to true to enable looping. ↓
+   */
+  const HISTORY_LOOP_NAVIGATION = false;
+
+  // ─── Internal store ───────────────────────────────────────────────────────────
+
+  /**
+   * historyStores  — Map<wrapperId, StoreObject>
+   *
+   * Session-only. The Map is recreated on every webview reload.
+   *
+   * To persist history across VSCode sessions:
+   *   1. On every historyPush call, serialise the stores:
+   *        vscode.setState({ histories: serializeStores() });
+   *   2. On page load, restore them:
+   *        const saved = vscode.getState();
+   *        if (saved && saved.histories) deserializeStores(saved.histories);
+   *   3. Call syncHistoryButtons() for each wrapper after restoring.
+   */
+  const historyStores = new Map();
+
+  /**
+   * Returns (or lazily creates) the history store for a wrapper id.
+   *
+   * Store shape:
+   *   entries    — string[]     immutable during navigation; append-only via historyPush
+   *   cursor     — number|null  null = live-draft; N = entries[N] is displayed
+   *   draft      — string       saved live-input value while browsing history
+   *   navigating — boolean      true while any history entry is shown; suppresses
+   *                             auto-save side-effects triggered by blur / input events
+   */
+  function getStore(id) {
+    if (!historyStores.has(id)) {
+      historyStores.set(id, { entries: [], cursor: null, draft: '', navigating: false });
+    }
+    return historyStores.get(id);
+  }
+
+  // ─── Core operations ──────────────────────────────────────────────────────────
+
+  /**
+   * historyPush — commit a value to a history store.
+   *
+   * Silently rejected when:
+   *  • value is empty or whitespace-only
+   *  • value equals the most-recent entry (no consecutive duplicates)
+   *  • store.navigating is true (user is browsing history — never save a
+   *    historical entry back into history as if it were new input)
+   *
+   * Oldest entry is auto-evicted when HISTORY_MAX_SIZE is exceeded.
+   * Resets the cursor to null (live-draft mode) after every push.
+   *
+   * @param {string} wrapperId  - key matching the .hist-wrapper element id
+   * @param {string} value      - the raw input string to store
+   */
+  function historyPush(wrapperId, value) {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+
+    const store = getStore(wrapperId);
+
+    // Never push while navigating — the displayed value is a historical entry,
+    // not new user input, so saving it would corrupt the history array.
+    if (store.navigating) return;
+
+    const last  = store.entries[store.entries.length - 1];
+    if (last === trimmed) return;   // skip consecutive duplicate
+
+    // Append to the end of the array (chronological order: oldest → newest).
+    // The entries array is NEVER mutated during navigation — only push() and
+    // shift() (for size capping) touch it, and only from this function.
+    store.entries.push(trimmed);
+
+    // ── Enforce HISTORY_MAX_SIZE ─────────────────────────────────────────
+    // Eviction policy: remove oldest entry when cap is exceeded.
+    // To evict newest instead, replace shift() with pop().
+    if (store.entries.length > HISTORY_MAX_SIZE) {
+      store.entries.shift();
+    }
+
+    // After a push we always return to live-draft mode:
+    //   cursor = null  → "no history entry selected; user is at the live input"
+    //   navigating     → false (push only happens when not navigating anyway)
+    store.cursor    = null;
+    store.navigating = false;
+    store.draft      = '';
+
+    syncHistoryButtons(wrapperId);
+  }
+
+  /**
+   * historyNavigate — move the history cursor for an input without mutating history.
+   *
+   * ── Cursor semantics ────────────────────────────────────────────────────────
+   *
+   *   store.entries  = ['cmd1', 'cmd2', 'cmd3']   (oldest → newest, indices 0…N-1)
+   *   store.cursor   = null   → live-draft mode; user is typing freely
+   *                  = 0      → showing entries[0], the oldest item
+   *                  = N-1    → showing entries[N-1], the most-recent item
+   *   store.draft    = the input value that was live when navigation began;
+   *                    restored when the user navigates back past the newest entry
+   *   store.navigating = true while any history entry is displayed;
+   *                    used to suppress auto-save side-effects (blur, input event)
+   *
+   * ── Navigation flow ─────────────────────────────────────────────────────────
+   *
+   *   ArrowUp (dir='up') moves BACKWARD through time (toward older entries):
+   *     • cursor === null  → save draft; jump to newest entry  (cursor = N-1)
+   *     • cursor > 0       → cursor--  (go one step older)
+   *     • cursor === 0     → boundary; no-op (or loop if HISTORY_LOOP_NAVIGATION)
+   *
+   *   ArrowDown (dir='down') moves FORWARD through time (toward newer entries):
+   *     • cursor === null  → already at live draft; no-op
+   *     • cursor < N-1     → cursor++  (go one step newer)
+   *     • cursor === N-1   → past newest; restore draft, cursor = null
+   *
+   * The entries array is NEVER written to during navigation.
+   *
+   * @param {string}           wrapperId
+   * @param {'up'|'down'}      dir
+   * @param {HTMLInputElement} input      — the actual text input element
+   */
+  function historyNavigate(wrapperId, dir, input) {
+    const store = getStore(wrapperId);
+    const len   = store.entries.length;
+    if (!len) return;   // nothing to navigate
+
+    if (dir === 'up') {
+      if (store.cursor === null) {
+        // ── First ArrowUp from live-draft mode ──────────────────────────
+        // Save whatever the user has typed so we can restore it on the
+        // way back down.  Then jump straight to the newest history entry.
+        store.draft      = input.value;
+        store.navigating = true;
+        store.cursor     = len - 1;   // index of the most-recent entry
+      } else if (store.cursor > 0) {
+        // ── Move one step further into the past ─────────────────────────
+        store.cursor--;
+      } else {
+        // ── Already at the oldest entry (cursor === 0) ──────────────────
+        if (HISTORY_LOOP_NAVIGATION) {
+          store.cursor = len - 1;     // wrap around to the newest entry
+        } else {
+          return;                     // hard stop — do not change anything
+        }
+      }
+    } else {
+      // ── dir === 'down': moving toward newer entries / live draft ────────
+
+      if (store.cursor === null) {
+        // Already in live-draft mode; nothing to do.
+        return;
+      }
+
+      if (store.cursor < len - 1) {
+        // ── Move one step toward the present ───────────────────────────
+        store.cursor++;
+      } else {
+        // ── cursor === len - 1: we were on the newest entry.
+        // One more ArrowDown exits history and restores the saved draft.
+        store.cursor     = null;
+        store.navigating = false;
+        input.value      = store.draft;
+        triggerInputEvent(input);
+        syncHistoryButtons(wrapperId);
+        flashInput(input);
+        return;   // early return — no history entry to display
+      }
+    }
+
+    // ── Apply the entry at the new cursor position to the input ──────────
+    // We do NOT mutate store.entries here — read-only access only.
+    input.value = store.entries[store.cursor];   // store.cursor is never null here
+    triggerInputEvent(input);
+    syncHistoryButtons(wrapperId);
+    flashInput(input);
+  }
+
+  // ─── DOM helpers ─────────────────────────────────────────────────────────────
+
+  /**
+   * syncHistoryButtons — update button disabled states and .has-history class.
+   * Called after every push or navigation step.
+   *
+   * .has-history on the wrapper controls CSS visibility of the nav strip.
+   * Button disabled state prevents navigating past the boundary when
+   * HISTORY_LOOP_NAVIGATION is false.
+   */
+  function syncHistoryButtons(wrapperId) {
+    const wrapper = document.getElementById(wrapperId);
+    if (!wrapper) return;
+
+    const store = getStore(wrapperId);
+    const len   = store.entries.length;
+
+    // Show nav strip only when history has at least one entry
+    wrapper.classList.toggle('has-history', len > 0);
+
+    const upBtn   = wrapper.querySelector('.hist-up');
+    const downBtn = wrapper.querySelector('.hist-down');
+    if (!upBtn || !downBtn) return;
+
+    if (len === 0) {
+      upBtn.disabled   = true;
+      downBtn.disabled = true;
+      return;
+    }
+
+    if (HISTORY_LOOP_NAVIGATION) {
+      // With looping, both buttons are always active when history exists.
+      upBtn.disabled   = false;
+      downBtn.disabled = false;
+    } else {
+      // Without looping, disable at the relevant boundary.
+      //
+      // ▲ (up/older): disabled when we're already at the oldest entry (cursor === 0).
+      // ▼ (down/newer): disabled when we're in live-draft mode (cursor === null),
+      //   i.e. there is no older entry currently displayed to navigate away from.
+      upBtn.disabled   = store.cursor === 0;
+      downBtn.disabled = store.cursor === null;   // null = live draft = nothing newer to go to
+    }
+  }
+
+  /**
+   * triggerInputEvent — dispatch a synthetic 'input' event so existing
+   * application listeners (updateConverter, runCalc, …) react to
+   * history navigation exactly as they react to user typing.
+   *
+   * Note: the 'input' listener in initInputHistory guards against this
+   * event causing side-effects during navigation by checking store.navigating.
+   */
+  function triggerInputEvent(el) {
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  /**
+   * flashInput — brief border-glow animation that confirms a history
+   * entry was loaded. Uses a CSS @keyframes animation on the input.
+   */
+  function flashInput(input) {
+    input.classList.remove('hist-flash');
+    void input.offsetWidth;   // force reflow so re-adding restarts the animation
+    input.classList.add('hist-flash');
+    input.addEventListener('animationend', () => {
+      input.classList.remove('hist-flash');
+    }, { once: true });
+  }
+
+  // ─── Registration ─────────────────────────────────────────────────────────────
+
+  // ─── Automatic history registration (debounced) ───────────────────────────────
+
+  /**
+   * Debounce timers per input to avoid flooding history with rapid updates.
+   * Key = inputId, Value = timeoutId
+   */
+  const debounceTimers = {};
+
+  /**
+   * isValidHistoryValue — determine if a value should be saved to history.
+   *
+   * Rejects:
+   *  • Empty or whitespace-only strings
+   *  • Incomplete placeholders: "-", ".", "0x", "0b", "0o"
+   *  • Single leading prefix without digits
+   *
+   * Accepts:
+   *  • Valid numeric literals: "0xFF", "-0x42", "0b1010", "255", etc.
+   *  • Only values that parseInput() would accept as valid
+   *
+   * @param {string} value - the raw input string to validate
+   * @returns {boolean}
+   */
+  function isValidHistoryValue(value) {
+    const trimmed = value.trim();
+
+    // Reject empty or whitespace-only
+    if (!trimmed) return false;
+
+    // Reject bare incomplete prefixes and common placeholders
+    if (/^-?0[xXbBoO]?$/.test(trimmed)) return false;   // "-", "0x", "0b", "0o", "-0x", etc.
+    if (/^-?\.?$/.test(trimmed)) return false;           // ".", "-.", "-"
+
+    // Validate using existing parseInput logic
+    // (a value is worth saving only if the converter can parse it)
+    const parsed = parseInput(trimmed);
+    return parsed.valid;
+  }
+
+  /**
+   * scheduleHistoryAutoSave — debounced automatic history registration.
+   *
+   * Call this on 'input' events to schedule a history save.
+   * If called multiple times rapidly (within DEBOUNCE_DELAY),
+   * only the latest value is saved after user stops typing.
+   *
+   * Conditions for save:
+   *  • Debounce timer expires (user stopped typing for ~600ms)
+   *  • Value is valid per isValidHistoryValue()
+   *  • Value differs from most-recent history entry
+   *
+   * This prevents flooding history with incomplete/invalid values
+   * like intermediate keystrokes or placeholders.
+   *
+   * @param {string} inputId    - id of the input element
+   * @param {string} wrapperId  - id of the .hist-wrapper element
+   * @param {string} value      - the current input value
+   */
+  function scheduleHistoryAutoSave(inputId, wrapperId, value) {
+    // Clear any pending debounce for this input
+    if (debounceTimers[inputId]) {
+      clearTimeout(debounceTimers[inputId]);
+    }
+
+    // Schedule a new save after DEBOUNCE_DELAY milliseconds
+    const DEBOUNCE_DELAY = 700;   // User stopped typing for 700ms
+
+    debounceTimers[inputId] = setTimeout(() => {
+      if (isValidHistoryValue(value)) {
+        historyPush(wrapperId, value);
+      }
+      delete debounceTimers[inputId];
+    }, DEBOUNCE_DELAY);
+  }
+
+  /**
+   * forceHistorySave — save a value immediately without debouncing.
+   *
+   * Use this when:
+   *  • Input loses focus (blur event)
+   *  • Conversion completes successfully
+   *  • User switches to another field
+   *
+   * Cancels any pending debounced save and pushes immediately if valid.
+   *
+   * @param {string} inputId    - id of the input element
+   * @param {string} wrapperId  - id of the .hist-wrapper element
+   * @param {string} value      - the current input value
+   */
+  function forceHistorySave(inputId, wrapperId, value) {
+    // Cancel pending debounce
+    if (debounceTimers[inputId]) {
+      clearTimeout(debounceTimers[inputId]);
+      delete debounceTimers[inputId];
+    }
+
+    // Save immediately if valid
+    if (isValidHistoryValue(value)) {
+      historyPush(wrapperId, value);
+    }
+  }
+
+  /**
+   * initInputHistory — wire up all history behaviour for one input.
+   *
+   * This is the single function to call when adding a new input to the
+   * history system. Pass the wrapper id and the input id inside it.
+   *
+   * Automatic history registration:
+   *   • On 'input' event (user typing): schedules debounced auto-save
+   *   • On 'blur' event (field loses focus): forces immediate save if valid
+   *
+   * Keyboard behaviour wired here:
+   *   ArrowUp   → historyNavigate 'up'   (preventDefault to stop cursor jump)
+   *   ArrowDown → historyNavigate 'down' (preventDefault to stop cursor jump)
+   *
+   * Any other key typed while navigating history resets the cursor to null
+   * so the next ArrowUp starts fresh from the most-recent entry.
+   *
+   * Mouse/touch: the ▲ and ▼ buttons call historyNavigate directly and
+   * return focus to the input so keyboard navigation stays seamless.
+   *
+   * @param {string} wrapperId  - id of the .hist-wrapper element
+   * @param {string} inputId    - id of the input[type="text"] inside it
+   */
+  function initInputHistory(wrapperId, inputId) {
+    const wrapper = document.getElementById(wrapperId);
+    const input   = document.getElementById(inputId);
+    if (!wrapper || !input) return;
+
+    // ── Automatic debounced history registration ───────────────────────────
+    input.addEventListener('input', function() {
+      const store = getStore(wrapperId);
+
+      // ── CRITICAL: suppress all history side-effects during navigation ────
+      //
+      // When historyNavigate() sets input.value and calls triggerInputEvent(),
+      // it fires this 'input' listener.  We must not treat that synthetic event
+      // as new user input — doing so would (a) reset the cursor back to null,
+      // (b) overwrite store.draft with a historical value, and (c) schedule an
+      // auto-save that would corrupt the entries array.
+      //
+      // store.navigating is set to true the moment navigation begins (first
+      // ArrowUp from live-draft mode) and cleared when the user returns to
+      // live-draft mode (ArrowDown past the newest entry) or starts typing.
+      if (store.navigating) return;
+
+      // User is genuinely typing — schedule a debounced save.
+      scheduleHistoryAutoSave(inputId, wrapperId, input.value);
+    });
+
+    // ── Save on blur ────────────────────────────────────────────────────────
+    //
+    // CRITICAL: if the user blurs while navigating (e.g. clicks a button),
+    // we must NOT save the currently-displayed historical entry back into
+    // history — that would corrupt the entries array and cause entries to
+    // multiply / overwrite each other.
+    input.addEventListener('blur', function() {
+      const store = getStore(wrapperId);
+      if (store.navigating) return;   // browsing history — do not save
+      forceHistorySave(inputId, wrapperId, input.value);
+    });
+
+    // ── Keyboard history navigation ─────────────────────────────────────────
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'ArrowUp') {
+        // preventDefault stops the text cursor jumping to position 0 in inputs.
+        e.preventDefault();
+        historyNavigate(wrapperId, 'up', input);
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        historyNavigate(wrapperId, 'down', input);
+        return;
+      }
+
+      // ── Any other key while navigating → exit navigation mode ───────────
+      //
+      // The user started editing while a historical entry was displayed.
+      // Treat the current input value as the new live draft and reset cursor.
+      // We do NOT save to history here — the debounced auto-save will handle
+      // that once the user stops typing.
+      const store = getStore(wrapperId);
+      if (store.navigating) {
+        store.navigating = false;
+        store.cursor     = null;
+        // Keep store.draft as-is; the user is now diverging from history.
+        syncHistoryButtons(wrapperId);
+      }
+    });
+
+    // ── Mouse / touch buttons for history navigation ───────────────────────
+    const upBtn   = wrapper.querySelector('.hist-up');
+    const downBtn = wrapper.querySelector('.hist-down');
+
+    if (upBtn) {
+      upBtn.addEventListener('click', function() {
+        historyNavigate(wrapperId, 'up', input);
+        input.focus();   // keep focus on the input after a button click
+      });
+    }
+    if (downBtn) {
+      downBtn.addEventListener('click', function() {
+        historyNavigate(wrapperId, 'down', input);
+        input.focus();
+      });
+    }
+
+    // Initialise button state (both disabled; no entries yet)
+    syncHistoryButtons(wrapperId);
+  }
+
+  // ── Register all managed inputs ────────────────────────────────────────────
+  //
+  // To add history to a new input:
+  //   1. Wrap it in  <div class="hist-wrapper" id="hw-myinput"> … </div>
+  //   2. Add the nav strip HTML inside the wrapper (copy from existing)
+  //   3. Call:  initInputHistory('hw-myinput', 'myinput-id');
+  //
+  initInputHistory('hw-conv',   'conv-input');
+  initInputHistory('hw-calc-a', 'calc-a');
+  initInputHistory('hw-calc-b', 'calc-b');
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  //  END OF INPUT HISTORY SYSTEM
+  // ══════════════════════════════════════════════════════════════════════════════
+
   // ─── Copy button handler ─────────────────────────────────────────────────────
 
   const COPY_SVG  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
@@ -851,7 +1566,6 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     document.body.removeChild(ta);
   }
 
-  // Set the data-value on a copy button by id
   function setCopy(id, text) {
     const el = document.getElementById(id);
     if (el) el.dataset.value = String(text);
@@ -878,7 +1592,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       } else if (/^[0-9]+$/.test(unsigned)) {
         value = BigInt(unsigned);
       } else {
-        return { valid: false, error: 'Use prefix: 0x hex · 0b binary · 0o octal · digits decimal · prefix negatives with - before the prefix' };
+        return { valid: false, error: 'Use prefix: 0x hex \xB7 0b binary \xB7 0o octal \xB7 digits decimal \xB7 prefix negatives with - before the prefix' };
       }
       return { valid: true, value: negative ? -value : value };
     } catch (e) {
@@ -921,7 +1635,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
         ).join('')
       ).join(' ');
       return byteIdx < byteGroups.length - 1
-        ? renderedByte + '<span class="bit-sep"> │ </span>'
+        ? renderedByte + '<span class="bit-sep"> \u2502 </span>'
         : renderedByte;
     }).join('');
   }
@@ -934,42 +1648,41 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     127:'DEL'
   };
 
-  // Full descriptions for the ASCII hint box
   const ASCII_DESCRIPTIONS = {
-    0:  'NUL — Null. String terminator in C/C++.',
-    1:  'SOH — Start of Heading.',
-    2:  'STX — Start of Text.',
-    3:  'ETX — End of Text. Ctrl+C in many terminals.',
-    4:  'EOT — End of Transmission. Ctrl+D (EOF on Unix).',
-    5:  'ENQ — Enquiry.',
-    6:  'ACK — Acknowledge.',
-    7:  'BEL — Bell. Triggers an audible alert (\\\\a in C).',
-    8:  'BS — Backspace (\\\\b in C).',
-    9:  'HT — Horizontal Tab (\\\\t in C).',
-    10: 'LF — Line Feed. Unix/Linux newline character (\\\\n in C).',
-    11: 'VT — Vertical Tab (\\\\v in C).',
-    12: 'FF — Form Feed. Advances to next page (\\\\f in C).',
-    13: 'CR — Carriage Return (\\\\r in C). Windows lines end with CR+LF.',
-    14: 'SO — Shift Out.',
-    15: 'SI — Shift In.',
-    16: 'DLE — Data Link Escape.',
-    17: 'DC1 — Device Control 1 (XON — resume transmission).',
-    18: 'DC2 — Device Control 2.',
-    19: 'DC3 — Device Control 3 (XOFF — pause transmission).',
-    20: 'DC4 — Device Control 4.',
-    21: 'NAK — Negative Acknowledge.',
-    22: 'SYN — Synchronous Idle.',
-    23: 'ETB — End of Transmission Block.',
-    24: 'CAN — Cancel.',
-    25: 'EM — End of Medium.',
-    26: 'SUB — Substitute. Ctrl+Z (EOF on Windows).',
-    27: 'ESC — Escape. Starts ANSI escape sequences in terminals.',
-    28: 'FS — File Separator.',
-    29: 'GS — Group Separator.',
-    30: 'RS — Record Separator.',
-    31: 'US — Unit Separator.',
-    32: 'SP — Space. Printable whitespace (0x20).',
-    127:'DEL — Delete. Non-printable control character.'
+    0:  'NUL \u2014 Null. String terminator in C/C++.',
+    1:  'SOH \u2014 Start of Heading.',
+    2:  'STX \u2014 Start of Text.',
+    3:  'ETX \u2014 End of Text. Ctrl+C in many terminals.',
+    4:  'EOT \u2014 End of Transmission. Ctrl+D (EOF on Unix).',
+    5:  'ENQ \u2014 Enquiry.',
+    6:  'ACK \u2014 Acknowledge.',
+    7:  'BEL \u2014 Bell. Triggers an audible alert \\\\a in C).',
+    8:  'BS \u2014 Backspace \\\\b in C).',
+    9:  'HT \u2014 Horizontal Tab \\\\t in C).',
+    10: 'LF \u2014 Line Feed. Unix/Linux newline character \\\\n in C).',
+    11: 'VT \u2014 Vertical Tab \\\\v in C).',
+    12: 'FF \u2014 Form Feed. Advances to next page \\\\f in C).',
+    13: 'CR \u2014 Carriage Return \\\\r in C). Windows lines end with CR+LF.',
+    14: 'SO \u2014 Shift Out.',
+    15: 'SI \u2014 Shift In.',
+    16: 'DLE \u2014 Data Link Escape.',
+    17: 'DC1 \u2014 Device Control 1 (XON \u2014 resume transmission).',
+    18: 'DC2 \u2014 Device Control 2.',
+    19: 'DC3 \u2014 Device Control 3 (XOFF \u2014 pause transmission).',
+    20: 'DC4 \u2014 Device Control 4.',
+    21: 'NAK \u2014 Negative Acknowledge.',
+    22: 'SYN \u2014 Synchronous Idle.',
+    23: 'ETB \u2014 End of Transmission Block.',
+    24: 'CAN \u2014 Cancel.',
+    25: 'EM \u2014 End of Medium.',
+    26: 'SUB \u2014 Substitute. Ctrl+Z (EOF on Windows).',
+    27: 'ESC \u2014 Escape. Starts ANSI escape sequences in terminals.',
+    28: 'FS \u2014 File Separator.',
+    29: 'GS \u2014 Group Separator.',
+    30: 'RS \u2014 Record Separator.',
+    31: 'US \u2014 Unit Separator.',
+    32: 'SP \u2014 Space. Printable whitespace (0x20).',
+    127:'DEL \u2014 Delete. Non-printable control character.'
   };
 
   function getAscii(v) {
@@ -982,14 +1695,13 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
   function updateAsciiHint(v) {
     const hintEl = document.getElementById('ascii-hint');
     const n = Number(v);
-
     let text = '';
     if (ASCII_DESCRIPTIONS[n]) {
       text = ASCII_DESCRIPTIONS[n];
     } else if (n >= 33 && n <= 126) {
-      text = "'" + String.fromCharCode(n) + "' — Printable ASCII character, code " + n + " (" + formatNumber("0x" + n.toString(16).toUpperCase()) + ").";
+      text = "'" + String.fromCharCode(n) + "' \u2014 Printable ASCII character, code " + n + " (" + formatNumber("0x" + n.toString(16).toUpperCase()) + ").";
     } else {
-      text = "N/A - Not Applicable - value out of range (0 to 127)."
+      text = "N/A - Not Applicable - value out of range (0 to 127).";
     }
     hintEl.innerHTML = text;
     hintEl.style.display = 'block';
@@ -1054,7 +1766,6 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     const nibblePad = Math.max(Math.ceil(rawBin.length / 4) * 4, currentBitSize);
     const grouped   = groupBinary(rawBin.padStart(nibblePad, '0'));
 
-    // Rebuild binary visual with copy button appended
     const binVisual = document.getElementById('bin-visual');
     binVisual.innerHTML =
       renderBinary(grouped) +
@@ -1088,10 +1799,8 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     setCopy('copy-unsigned', uStr);
     setCopy('copy-signed',   sStr);
 
-    // ASCII hint
     updateAsciiHint(unsigned);
 
-    // Overflow warnings
     const overflowEl       = document.getElementById('conv-overflow');
     const signedOverflowEl = document.getElementById('conv-signed-overflow');
     const maxUnsigned = (1n << BigInt(currentBitSize)) - 1n;
@@ -1230,7 +1939,8 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     document.querySelectorAll('.op-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.op === op);
     });
-    const bWrap = document.getElementById('calc-b');
+    // Hide/show the B wrapper (NOT operation only needs one operand)
+    const bWrap = document.getElementById('hw-calc-b');
     const lblB  = document.getElementById('lbl-b');
     if (op === 'NOT') {
       bWrap.style.display = 'none';
@@ -1370,7 +2080,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     const uStr   = unsigned.toString(10);
     const sStr   = signed.toString(10);
 
-    document.getElementById('calc-expr-text').textContent = '▶ ' + expr;
+    document.getElementById('calc-expr-text').textContent = '\u25B6 ' + expr;
     document.getElementById('cr-hex').innerHTML = formatNumber(hexStr);
     document.getElementById('cr-dec').innerHTML = formatNumber(decStr);
     document.getElementById('cr-bin').innerHTML = '<span class="num-value">' + grouped + '</span>';
@@ -1396,6 +2106,8 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
   const calcB = document.getElementById('calc-b');
   if (calcA) {
     calcA.addEventListener('input', runCalc);
+    // Note: Enter on calc-a is handled by initInputHistory (push) above;
+    // this separate handler ensures runCalc fires too.
     calcA.addEventListener('keydown', e => { if (e.key === 'Enter') runCalc(); });
   }
   if (calcB) {
@@ -1444,6 +2156,9 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       const input = document.getElementById('conv-input');
       input.value = msg.value;
       updateConverter(msg.value);
+      // Push externally-set values into history too (e.g. values sent from
+      // the editor via right-click → "Send to BitWorkbench")
+      historyPush('hw-conv', msg.value);
       if (!sectionState.converter) toggleSection('converter');
     } else if (msg.type === 'copyDone') {
       const btn = document.getElementById(msg.id);

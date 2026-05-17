@@ -434,7 +434,7 @@ SHR 0x80 3
 - [ ] Endianness visualization
 - [ ] IEEE754 float32 / float64 visualization
 - [ ] Bit-field editor
-- [ ] Expression history
+- [x] Expression history
 - [ ] Keyboard-driven calculator mode
 - [x] Copy buttons
 - [ ] Status bar integration
