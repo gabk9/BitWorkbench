@@ -3,9 +3,13 @@
     <p><em>A numeric systems workbench for low-level developers.</em></p>
 </div>
 
-<div align="center" style="display: flex; gap: 20px;">
-    <img src="resources/integers-tab.png"></img>
-    <img src="resources/float-tab.png"></img>
+<div align="center">
+  <table>
+    <tr>
+      <td><img src="resources/integers-tab.png"/></td>
+      <td><img src="resources/float-tab.png"/></td>
+    </tr>
+  </table>
 </div>
 
 ---
