@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## v2.2.1 - 2026
+## v1.3.0 - 2026
 
 ### Added
 * IEEE-754 float32 / float64 visualizer
