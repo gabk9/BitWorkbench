@@ -3,8 +3,9 @@
     <p><em>A numeric systems workbench for low-level developers.</em></p>
 </div>
 
-<div align="center">
-    <img src="resources/workbench.png"></img>
+<div align="center" style="display: flex; gap: 20px;">
+    <img src="resources/integers-tab.png"></img>
+    <img src="resources/float-tab.png"></img>
 </div>
 
 ---
