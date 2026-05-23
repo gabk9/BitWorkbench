@@ -1,5 +1,6 @@
 {
     "cSpell.words": [
+        "analyse",
         "behaviour",
         "bitworkbench",
         "Cascadia",
@@ -7,8 +8,18 @@
         "conv",
         "darr",
         "hellip",
+        "ieee",
         "Initialise",
+        "mant",
         "maxlength",
+        "middot",
+        "myinput",
+        "neginf",
+        "negzero",
+        "prec",
+        "serialise",
+        "subnorm",
+        "uarr",
         "XOFF"
     ]
 }
