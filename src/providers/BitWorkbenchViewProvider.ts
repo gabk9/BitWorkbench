@@ -46,11 +46,15 @@ export class BitWorkbenchViewProvider implements vscode.WebviewViewProvider {
   /**
    * Send a value string to the webview to populate the converter input.
    * Used when the user selects a numeric literal in the editor.
+   *
+   * @param value    The numeric literal text (e.g. "3.14", "0xFF").
+   * @param type     Whether the value is an 'integer' or 'float'. The webview
+   *                 will automatically switch to the appropriate tab.
    */
-  public sendInputValue(value: string): void {
+  public sendInputValue(value: string, type: 'integer' | 'float' = 'integer'): void {
     if (this._view) {
       this._view.show(true); // reveal without stealing focus
-      this._view.webview.postMessage({ type: 'setInput', value });
+      this._view.webview.postMessage({ type: 'setInput', value, valueType: type });
     }
   }
 

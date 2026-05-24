@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## v1.3.1 - 2026
+
+### Improved
+* "Analyse Selected Value" now automatically switches to the correct tab based on the selected value — integers, hex, binary, and octal route to the Integers tab; floats route to the IEEE-754 tab
+* `-0` is treated as a float and routes to the IEEE-754 tab
+
+---
+
 ## v1.3.0 - 2026
 
 ### Added

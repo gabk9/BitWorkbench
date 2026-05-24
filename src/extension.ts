@@ -7,7 +7,7 @@
 
 import * as vscode from 'vscode';
 import { BitWorkbenchViewProvider } from './providers/BitWorkbenchViewProvider';
-import { registerSelectionWatcher, getSelectedText, isNumericLiteral } from './utils/selectionDetector';
+import { registerSelectionWatcher, getSelectedText, isNumericLiteral, getNumericType } from './utils/selectionDetector';
 
 /**
  * Called when the extension is activated.
@@ -62,16 +62,16 @@ export function activate(context: vscode.ExtensionContext): void {
 
       // Reveal sidebar and push value
       vscode.commands.executeCommand('workbench.view.extension.bitworkbench');
-      provider.sendInputValue(text);
+      provider.sendInputValue(text, getNumericType(text) ?? 'integer');
     })
   );
 
   // ── Auto-detect selection changes ──────────────────────────────────────────
-  registerSelectionWatcher(context, (value: string) => {
+  registerSelectionWatcher(context, (value: string, numType) => {
     // Only push to the panel when it is already visible
     // to avoid forcefully opening the sidebar on every cursor move.
     if (provider.isVisible) {
-      provider.sendInputValue(value);
+      provider.sendInputValue(value, numType);
     }
   });
 

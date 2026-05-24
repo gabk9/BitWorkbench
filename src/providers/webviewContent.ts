@@ -2625,13 +2625,29 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
   window.addEventListener('message', event => {
     const msg = event.data;
     if (msg.type === 'setInput') {
-      const input = document.getElementById('conv-input');
-      input.value = msg.value;
-      updateConverter(msg.value);
+      // ── Auto-switch to the correct top-level tab ──────────────────────────
+      // 'float' values go to the IEEE-754 tab; everything else (integers,
+      // hex, binary, octal) stays on the Integers tab.
+      if (msg.valueType === 'float') {
+        switchTab('ieee754');
+        const fpInput = document.getElementById('fp-input');
+        if (fpInput) {
+          fpInput.value = msg.value;
+          if (typeof updateFpVisualizer === 'function') { updateFpVisualizer(msg.value); }
+        }
+        if (typeof fpSectionState !== 'undefined' && !fpSectionState.vis) {
+          toggleFpSection('vis');
+        }
+      } else {
+        switchTab('integers');
+        const input = document.getElementById('conv-input');
+        input.value = msg.value;
+        updateConverter(msg.value);
+        if (!sectionState.converter) { toggleSection('converter'); }
+      }
       // Push externally-set values into history too (e.g. values sent from
-      // the editor via right-click → "Send to BitWorkbench")
+      // the editor via right-click → "Analyse Selected Value")
       historyPush('hw-conv', msg.value);
-      if (!sectionState.converter) toggleSection('converter');
     } else if (msg.type === 'copyDone') {
       const btn = document.getElementById(msg.id);
       if (btn) showSuccess(btn);
