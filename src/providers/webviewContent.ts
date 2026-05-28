@@ -1326,6 +1326,8 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
 
     <!-- Precision selector (mirrors bit-selector style) -->
     <div class="bit-selector" id="fp-precision-selector">
+      <button type="button" class="bit-btn"        data-prec="f16">float16</button>
+      <button type="button" class="bit-btn"        data-prec="bf16">bfloat16</button>
       <button type="button" class="bit-btn active" data-prec="32">float32</button>
       <button type="button" class="bit-btn"        data-prec="64">float64</button>
     </div>
@@ -1360,8 +1362,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       <button type="button" class="fp-preset-btn" data-val="__MAX__"           title="Maximum finite value">MAX</button>
       <button type="button" class="fp-preset-btn" data-val="__MIN__"           title="Minimum positive normal value">MIN</button>
       <button type="button" class="fp-preset-btn" data-val="__EPS__"           title="Machine epsilon">&#x3B5;</button>
-      <button type="button" class="fp-preset-btn" data-val="Infinity"          title="+Infinity">+INF</button>
-      <button type="button" class="fp-preset-btn" data-val="-Infinity"         title="-Infinity">-INF</button>
+      <button type="button" class="fp-preset-btn" data-val="Infinity"          title="Infinity">INF</button>
       <button type="button" class="fp-preset-btn" data-val="NaN"               title="Not a Number">NaN</button>
     </div>
 
@@ -2676,7 +2677,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
   //  IEEE-754 VISUALIZER
   // ══════════════════════════════════════════════════════════════════════════════
 
-  let currentFpPrec = 32;   // 32 or 64
+  let currentFpPrec = '32';   // 'f16', 'bf16', '32', or '64'
 
   // ─── FP section toggle (mirrors integer section toggle) ─────────────────────
 
@@ -2700,7 +2701,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
 
   document.querySelectorAll('#fp-precision-selector .bit-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      currentFpPrec = Number(btn.dataset.prec);
+      currentFpPrec = btn.dataset.prec;
       document.querySelectorAll('#fp-precision-selector .bit-btn').forEach(b =>
         b.classList.toggle('active', b === btn));
       updateFpLegend();
@@ -2710,8 +2711,11 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
   });
 
   function updateFpLegend() {
-    const expBits  = currentFpPrec === 32 ? 8 : 11;
-    const mantBits = currentFpPrec === 32 ? 23 : 52;
+    let expBits, mantBits;
+    if      (currentFpPrec === 'f16')  { expBits = 5;  mantBits = 10; }
+    else if (currentFpPrec === 'bf16') { expBits = 8;  mantBits = 7;  }
+    else if (currentFpPrec === '32')   { expBits = 8;  mantBits = 23; }
+    else                               { expBits = 11; mantBits = 52; }
     const legExp  = document.getElementById('fp-leg-exp');
     const legMant = document.getElementById('fp-leg-mant');
     if (legExp) {
@@ -2733,11 +2737,20 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       let val = btn.dataset.val;
       // Resolve dynamic presets based on current precision
       if (val === '__MAX__') {
-        val = currentFpPrec === 32 ? '3.4028234663852886e+38' : '1.7976931348623157e+308';
+        if      (currentFpPrec === 'f16')  val = '65504';
+        else if (currentFpPrec === 'bf16') val = '3.3895313892515355e+38';
+        else if (currentFpPrec === '32')   val = '3.4028234663852886e+38';
+        else                               val = '1.7976931348623157e+308';
       } else if (val === '__MIN__') {
-        val = currentFpPrec === 32 ? '1.1754943508222875e-38' : '2.2250738585072014e-308';
+        if      (currentFpPrec === 'f16')  val = '6.103515625e-5';
+        else if (currentFpPrec === 'bf16') val = '1.1754943508222875e-38';
+        else if (currentFpPrec === '32')   val = '1.1754943508222875e-38';
+        else                               val = '2.2250738585072014e-308';
       } else if (val === '__EPS__') {
-        val = currentFpPrec === 32 ? '1.1920928955078125e-7' : '2.220446049250313e-16';
+        if      (currentFpPrec === 'f16')  val = '9.765625e-4';
+        else if (currentFpPrec === 'bf16') val = '7.8125e-3';
+        else if (currentFpPrec === '32')   val = '1.1920928955078125e-7';
+        else                               val = '2.220446049250313e-16';
       }
       const input = document.getElementById('fp-input');
       input.value = val;
@@ -2763,6 +2776,67 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
     return (BigInt(hi) << 32n) | BigInt(lo >>> 0);
   }
 
+  // ─── float16 (IEEE 754 binary16): 1 sign + 5 exp + 10 mant, bias=15 ─────────
+  // Converts a JS number to its float16 raw uint16 bits.
+  function floatToRawBitsF16(f) {
+    if (isNaN(f))        return 0x7E00; // canonical qNaN
+    if (!isFinite(f))    return f > 0 ? 0x7C00 : 0xFC00;
+    if (f === 0)         return (1/f === -Infinity) ? 0x8000 : 0x0000;
+
+    const buf = new ArrayBuffer(4);
+    new Float32Array(buf)[0] = f;
+    const b = new Uint32Array(buf)[0];
+
+    const sign = (b >>> 31) & 1;
+    const exp32 = (b >>> 23) & 0xFF;
+    const mant32 = b & 0x7FFFFF;
+
+    let exp16 = exp32 - 127 + 15;  // re-bias
+
+    if (exp16 >= 31) {
+      // Overflow → infinity
+      return (sign << 15) | 0x7C00;
+    }
+    if (exp16 <= 0) {
+      // Underflow → subnormal or zero
+      if (exp16 < -10) return (sign << 15); // underflows to ±0
+      // Subnormal: implicit leading 1 becomes explicit
+      const subnorm = ((mant32 | 0x800000) >>> (14 - exp16)) & 0x3FF;
+      return (sign << 15) | subnorm;
+    }
+    // Normal: round-to-nearest-even (truncate for simplicity)
+    const mant16 = (mant32 >>> 13) & 0x3FF;
+    return (sign << 15) | (exp16 << 10) | mant16;
+  }
+
+  // ─── bfloat16: 1 sign + 8 exp + 7 mant, bias=127 ────────────────────────────
+  // bfloat16 is literally the top 16 bits of float32.
+  function floatToRawBitsBF16(f) {
+    if (isNaN(f))     return 0x7FC0; // canonical qNaN
+    const buf = new ArrayBuffer(4);
+    new Float32Array(buf)[0] = f;
+    const b = new Uint32Array(buf)[0];
+    // Truncate to upper 16 bits (round-toward-zero)
+    return (b >>> 16) & 0xFFFF;
+  }
+
+  // ─── Reconstruct float value from 16-bit raw bits ────────────────────────────
+  function rawBitsF16ToFloat(raw) {
+    const sign = (raw >>> 15) & 1;
+    const exp  = (raw >>> 10) & 0x1F;
+    const mant = raw & 0x3FF;
+    if (exp === 31) return sign ? -Infinity : (mant ? NaN : Infinity);
+    if (exp === 0)  return (sign ? -1 : 1) * Math.pow(2, -14) * (mant / 1024);
+    return (sign ? -1 : 1) * Math.pow(2, exp - 15) * (1 + mant / 1024);
+  }
+
+  function rawBitsBF16ToFloat(raw) {
+    // Expand back to float32 by shifting into upper 16 bits
+    const buf = new ArrayBuffer(4);
+    new Uint32Array(buf)[0] = (raw & 0xFFFF) << 16;
+    return new Float32Array(buf)[0];
+  }
+
   // ─── Parse float input ──────────────────────────────────────────────────────
 
   function parseFpInput(raw) {
@@ -2786,30 +2860,34 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
   // ─── Analyse float value ─────────────────────────────────────────────────────
 
   function analyseFp(value, prec) {
-    const is32 = prec === 32;
-    const expBits  = is32 ? 8  : 11;
-    const mantBits = is32 ? 23 : 52;
-    const bias     = is32 ? 127 : 1023;
-    const totalBits = prec;
+    let expBits, mantBits, bias, totalBits, rawBits, storedValue;
 
-    let rawBits, sign, expStored, mantRaw;
-
-    if (is32) {
+    if (prec === 'f16') {
+      expBits = 5; mantBits = 10; bias = 15; totalBits = 16;
+      const raw16 = floatToRawBitsF16(value);
+      rawBits = BigInt(raw16);
+      storedValue = rawBitsF16ToFloat(raw16);
+    } else if (prec === 'bf16') {
+      expBits = 8; mantBits = 7; bias = 127; totalBits = 16;
+      const raw16 = floatToRawBitsBF16(value);
+      rawBits = BigInt(raw16);
+      storedValue = rawBitsBF16ToFloat(raw16);
+    } else if (prec === '32') {
+      expBits = 8; mantBits = 23; bias = 127; totalBits = 32;
       const raw = floatToRawBits32(Math.fround(value));
-      rawBits    = BigInt(raw >>> 0);
-      sign       = Number((rawBits >> BigInt(31)) & 1n);
-      expStored  = Number((rawBits >> BigInt(mantBits)) & ((1n << BigInt(expBits)) - 1n));
-      mantRaw    = rawBits & ((1n << BigInt(mantBits)) - 1n);
+      rawBits = BigInt(raw >>> 0);
+      storedValue = Math.fround(value);
     } else {
-      rawBits    = floatToRawBits64(value);
-      sign       = Number((rawBits >> BigInt(63)) & 1n);
-      expStored  = Number((rawBits >> BigInt(mantBits)) & ((1n << BigInt(expBits)) - 1n));
-      mantRaw    = rawBits & ((1n << BigInt(mantBits)) - 1n);
+      expBits = 11; mantBits = 52; bias = 1023; totalBits = 64;
+      rawBits = floatToRawBits64(value);
+      storedValue = value;
     }
 
-    const maxExp = (1 << expBits) - 1;  // all-ones exponent
+    const sign      = Number((rawBits >> BigInt(totalBits - 1)) & 1n);
+    const expStored = Number((rawBits >> BigInt(mantBits)) & ((1n << BigInt(expBits)) - 1n));
+    const mantRaw   = rawBits & ((1n << BigInt(mantBits)) - 1n);
+    const maxExp    = (1 << expBits) - 1;
 
-    // Classify
     let classification;
     if (expStored === maxExp) {
       classification = mantRaw === 0n ? (sign ? 'neginf' : 'inf') : 'nan';
@@ -2819,20 +2897,13 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
       classification = 'normal';
     }
 
-    const expActual = expStored - bias;
-
-    // Full bit string (MSB first)
-    const bitStr = rawBits.toString(2).padStart(totalBits, '0');
-
-    // Hex
-    const hexDigits = totalBits / 4;
-    const hexStr    = '0x' + rawBits.toString(16).toUpperCase().padStart(hexDigits, '0');
-
-    // Stored float for precision comparison
-    const storedValue = is32 ? Math.fround(value) : value;
+    const expActual  = expStored - bias;
+    const bitStr     = rawBits.toString(2).padStart(totalBits, '0');
+    const hexDigits  = totalBits / 4;
+    const hexStr     = '0x' + rawBits.toString(16).toUpperCase().padStart(hexDigits, '0');
 
     return {
-      prec, is32, expBits, mantBits, bias, totalBits,
+      prec, expBits, mantBits, bias, totalBits,
       sign, expStored, expActual, mantRaw, rawBits,
       classification, bitStr, hexStr, storedValue
     };
@@ -2841,7 +2912,7 @@ export function getWebviewContent(webview: vscode.Webview, extensionUri: vscode.
   // ─── Build formula string ────────────────────────────────────────────────────
 
   function buildFormula(a, inputValue) {
-    const { classification, sign, expStored, expActual, mantRaw, mantBits, bias, is32 } = a;
+    const { classification, sign, expStored, expActual, mantRaw, mantBits, bias } = a;
 
     if (classification === 'nan') {
       return '(-1)^' + sign + ' \u00D7 NaN  \u2014  not-a-number encoding';
