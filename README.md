@@ -40,7 +40,7 @@ Displays unsigned, signed, and raw representations simultaneously across int8, i
 
 ## ✦ IEEE-754 Visualizer
 
-Breaks down any float into its sign, exponent, and mantissa fields for both float32 and float64. Shows the hex and binary representations, and a precision box comparing your input value against what the format actually stores.
+Breaks down any float into its sign, exponent, and mantissa fields for both float16, bfloat16, float32 and float64. Shows the hex and binary representations, and a precision box comparing your input value against what the format actually stores.
 
 ```text
 Input: 3.14159
