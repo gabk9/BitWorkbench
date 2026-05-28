@@ -58,7 +58,7 @@ Precision
   Stored: 3.14159274101257  (what float32 actually holds)
 ```
 
-Supports special values: `+INF`, `-INF`, `NaN`, `MAX`, `MIN`, `ε`, `π`, `e`.
+Supports special values: `INF`, `NaN`, `MAX`, `MIN`, `ε`, `π`, `e`.
 
 ## ✦ Binary Visualization
 
@@ -113,7 +113,7 @@ Press `F5` to launch the Extension Development Host.
 ```bash
 npm install -g @vscode/vsce
 vsce package
-code --install-extension bitworkbench-1.0.9.vsix
+code --install-extension bitworkbench-*.vsix
 ```
 
 ---
