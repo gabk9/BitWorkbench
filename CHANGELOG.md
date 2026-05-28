@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## v1.3.2 - 2026
+
+### Added
+* float16 and bfloat16 to the IEEE-754 tab
+
+### Improved
+* Removed `-INF` since it was not necessary
+* Changed `+INF` to simply `INF`
+
+---
+
 ## v1.3.1 - 2026
 
 ### Improved
