@@ -60,8 +60,8 @@
     "keybindings": [
       {
         "command": "bitworkbench.analyzeSelection",
-        "key": "ctrl+shift+b",
-        "mac": "cmd+shift+b",
+        "key": "ctrl+shift+v",
+        "mac": "cmd+shift+v",
         "when": "editorTextFocus"
       }
     ],
