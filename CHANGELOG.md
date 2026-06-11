@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## v1.3.3 - 2026
+
+## Improved
+* edited the "Analyze selected value" shortcut
+
+---
+
 ## v1.3.2 - 2026
 
 ### Added
